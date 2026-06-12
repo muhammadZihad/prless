@@ -63,6 +63,11 @@ export function App() {
       .finally(() => setReady(true));
   }, []);
 
+  // Reflect the active repo in the browser tab title.
+  useEffect(() => {
+    document.title = repo ? `${repo.name} · PRless` : 'PRless';
+  }, [repo]);
+
   // Load refs + comments whenever the active repo changes.
   useEffect(() => {
     if (!repo) return;
