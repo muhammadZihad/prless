@@ -3,6 +3,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
+import helmet from '@fastify/helmet';
 import { CommentStore } from './comments.js';
 import { createGit } from './git.js';
 import { registerApiRoutes } from './routes.js';
@@ -16,6 +17,22 @@ export interface ServerOptions {
 
 export async function buildServer(opts: ServerOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
+
+  // Basic security headers. The UI is bundled and same-origin, so a tight CSP
+  // works; 'unsafe-inline' is needed only for React's inline style attributes.
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        // PRless serves over plain http on localhost; don't force https upgrades.
+        upgradeInsecureRequests: null,
+      },
+    },
+  });
 
   const git = createGit(opts.repoRoot);
   const store = new CommentStore(opts.repoRoot);

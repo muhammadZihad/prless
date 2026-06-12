@@ -55,6 +55,7 @@
     "prepare": "npm run build"
   },
   "dependencies": {
+    "@fastify/helmet": "^11.1.1",
     "@fastify/static": "^7.0.4",
     "fastify": "^4.28.1",
     "open": "^10.1.0",
