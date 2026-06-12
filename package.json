@@ -58,7 +58,8 @@
     "@fastify/static": "^7.0.4",
     "fastify": "^4.28.1",
     "open": "^10.1.0",
-    "simple-git": "^3.27.0"
+    "simple-git": "^3.27.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@fontsource-variable/geist": "^5.2.9",
