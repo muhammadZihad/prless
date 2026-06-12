@@ -64,6 +64,7 @@ export interface DiffResponse {
   head?: string;
   raw: string; // unified diff text
   untracked: string[]; // untracked files not included in the diff (working mode)
+  ignored: string[]; // files hidden by .prlessignore
 }
 
 export interface ExportResponse {

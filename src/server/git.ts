@@ -1,5 +1,7 @@
 import { simpleGit, type SimpleGit } from 'simple-git';
+import type { Ignore } from 'ignore';
 import type { DiffMode, DiffResponse, RefsResponse } from '../shared/types.js';
+import { filterDiff } from './ignore.js';
 
 export class GitError extends Error {}
 
@@ -45,6 +47,7 @@ export async function getDiff(
   mode: DiffMode,
   base?: string,
   head?: string,
+  ig?: Ignore | null,
 ): Promise<DiffResponse> {
   let args: string[];
 
@@ -65,11 +68,13 @@ export async function getDiff(
   }
 
   // Stable, machine-friendly diff output.
-  const raw = await git.diff(['--no-color', ...args]);
+  const rawAll = await git.diff(['--no-color', ...args]);
+  const { raw, ignored } = filterDiff(rawAll, ig ?? null);
 
   // Untracked files only matter when reviewing the working tree — staged and
   // compare modes are explicit about what they include.
-  const untracked = mode === 'working' ? await getUntrackedFiles(git) : [];
+  const untrackedAll = mode === 'working' ? await getUntrackedFiles(git) : [];
+  const untracked = ig ? untrackedAll.filter((f) => !ig.ignores(f)) : untrackedAll;
 
-  return { mode, base, head, raw, untracked };
+  return { mode, base, head, raw, untracked, ignored };
 }

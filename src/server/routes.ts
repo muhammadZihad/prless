@@ -3,6 +3,7 @@ import type { SimpleGit } from 'simple-git';
 import { CommentStore } from './comments.js';
 import { exportReview } from './export.js';
 import { getDiff, getRefs, GitError } from './git.js';
+import { loadIgnore } from './ignore.js';
 import {
   CreateCommentSchema,
   DiffQuerySchema,
@@ -31,7 +32,8 @@ export async function registerApiRoutes(
     }
     const { mode, base, head } = parsed.data;
     try {
-      return await getDiff(ctx.git, mode, base, head);
+      const ig = await loadIgnore(ctx.repoRoot);
+      return await getDiff(ctx.git, mode, base, head, ig);
     } catch (err) {
       if (err instanceof GitError) {
         return reply.code(400).send({ error: err.message });
@@ -76,9 +78,12 @@ export async function registerApiRoutes(
   });
 
   app.post('/api/export', async () => {
-    const comments = await ctx.store.list();
+    const ig = await loadIgnore(ctx.repoRoot);
+    const all = await ctx.store.list();
+    // Don't export comments on files hidden by .prlessignore.
+    const comments = ig ? all.filter((c) => !ig.ignores(c.file)) : all;
     // Use the working-tree diff as the reference for untracked + orphan detection.
-    const diff = await getDiff(ctx.git, 'working');
+    const diff = await getDiff(ctx.git, 'working', undefined, undefined, ig);
     const result = await exportReview(ctx.repoRoot, comments, diff.untracked, diff.raw);
     return result;
   });

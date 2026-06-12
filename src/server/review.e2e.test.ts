@@ -113,6 +113,22 @@ describe('review workflow (e2e)', () => {
     expect(await reviewMd()).toContain('`new.ts`');
   });
 
+  it('hides files matched by .prlessignore from the diff', async () => {
+    const git = createGit(dir);
+    await writeFile(path.join(dir, 'bundle.min.js'), 'a\n');
+    await git.add('.');
+    await git.commit('add bundle');
+    await writeFile(path.join(dir, 'bundle.min.js'), 'b\n');
+    await writeFile(path.join(dir, 'a.ts'), 'const a = 9;\n');
+    await writeFile(path.join(dir, '.prlessignore'), '*.min.js\n');
+
+    const diff = await app.inject({ method: 'GET', url: '/api/diff?mode=working' });
+    const body = diff.json();
+    expect(body.raw).toContain('a.ts');
+    expect(body.raw).not.toContain('bundle.min.js');
+    expect(body.ignored).toContain('bundle.min.js');
+  });
+
   it('rejects an invalid comment payload with 400', async () => {
     const res = await app.inject({
       method: 'POST',

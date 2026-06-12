@@ -19,6 +19,7 @@ export function App() {
   const [head, setHead] = useState('');
   const [raw, setRaw] = useState('');
   const [untracked, setUntracked] = useState<string[]>([]);
+  const [ignored, setIgnored] = useState<string[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [viewType, setViewType] = useState<'unified' | 'split'>('split');
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -45,16 +46,19 @@ export function App() {
     if (mode === 'compare' && (!base || !head)) {
       setRaw('');
       setUntracked([]);
+      setIgnored([]);
       return;
     }
     try {
       const res = await api.getDiff(mode, base, head);
       setRaw(res.raw);
       setUntracked(res.untracked ?? []);
+      setIgnored(res.ignored ?? []);
     } catch (e) {
       setError(String(e));
       setRaw('');
       setUntracked([]);
+      setIgnored([]);
     }
   }, [mode, base, head]);
 
@@ -239,6 +243,13 @@ export function App() {
           {untracked.length} untracked {untracked.length === 1 ? 'file is' : 'files are'} not
           included in this review. Run <code>git add -N &lt;file&gt;</code> to include{' '}
           {untracked.length === 1 ? 'it' : 'them'}.
+        </div>
+      )}
+
+      {ignored.length > 0 && (
+        <div className="banner info">
+          {ignored.length} {ignored.length === 1 ? 'file' : 'files'} hidden by{' '}
+          <code>.prlessignore</code>.
         </div>
       )}
 
