@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-12
+
 ### Added
 
 - Run bare `prless` to start with no repository selected and pick a folder from the native OS
