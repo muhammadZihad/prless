@@ -51,10 +51,11 @@ export function renderReviewMarkdown(comments: Comment[]): string {
 export async function exportReview(
   repoRoot: string,
   comments: Comment[],
-): Promise<{ path: string; count: number }> {
+): Promise<{ path: string; count: number; content: string }> {
   const dir = path.join(repoRoot, '.prless');
   const file = path.join(dir, 'review.md');
+  const content = renderReviewMarkdown(comments);
   await mkdir(dir, { recursive: true });
-  await writeFile(file, renderReviewMarkdown(comments), 'utf8');
-  return { path: file, count: comments.filter((c) => c.status === 'open').length };
+  await writeFile(file, content, 'utf8');
+  return { path: file, count: comments.filter((c) => c.status === 'open').length, content };
 }
