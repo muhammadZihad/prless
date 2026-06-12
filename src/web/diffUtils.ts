@@ -51,6 +51,29 @@ export function anchorKey(side: DiffSide, line: number): string {
   return `${side}:${line}`;
 }
 
+/** Map "side:line" -> the current text at that anchor, for drift detection. */
+export function buildChangeTextIndex(file: FileDiff): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const hunk of file.hunks) {
+    for (const change of hunk.changes) {
+      const anchor = changeAnchor(change);
+      index.set(`${anchor.side}:${anchor.line}`, changeText(change));
+    }
+  }
+  return index;
+}
+
+/**
+ * A comment has drifted when its anchor line still exists in the diff but the
+ * line's text no longer matches the snippet captured when it was written.
+ * Returns false when there's nothing to compare against (no snippet, or the
+ * anchor is gone — that's an orphan, handled separately).
+ */
+export function isDrifted(snippet: string, currentText: string | undefined): boolean {
+  if (!snippet.trim() || currentText === undefined) return false;
+  return snippet.trim() !== currentText.trim();
+}
+
 export interface ChangeContext {
   beforeContext: string[];
   afterContext: string[];

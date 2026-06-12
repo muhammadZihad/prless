@@ -7,9 +7,17 @@ interface Props {
   onResolve: (id: string, resolved: boolean) => void;
   onDelete: (id: string) => void;
   autoFocus?: boolean;
+  driftedIds?: Set<string>;
 }
 
-export function CommentThread({ comments, onAdd, onResolve, onDelete, autoFocus }: Props) {
+export function CommentThread({
+  comments,
+  onAdd,
+  onResolve,
+  onDelete,
+  autoFocus,
+  driftedIds,
+}: Props) {
   const [draft, setDraft] = useState('');
 
   const submit = () => {
@@ -26,6 +34,11 @@ export function CommentThread({ comments, onAdd, onResolve, onDelete, autoFocus 
           <div className="comment-body">{c.body}</div>
           <div className="comment-actions">
             <span className={`status-chip ${c.status}`}>{c.status}</span>
+            {driftedIds?.has(c.id) && (
+              <span className="drift-badge" title="The code on this line changed since the comment was written.">
+                code changed
+              </span>
+            )}
             <span className="spacer" />
             <button onClick={() => onResolve(c.id, c.status !== 'resolved')}>
               {c.status === 'resolved' ? 'Reopen' : 'Resolve'}

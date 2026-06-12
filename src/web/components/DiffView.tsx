@@ -12,10 +12,12 @@ import { detectLanguage } from '../codeThemes';
 import {
   anchorKey,
   buildChangeKeyIndex,
+  buildChangeTextIndex,
   changeAnchor,
   changeContext,
   changeText,
   filePath,
+  isDrifted,
   type ChangeContext,
   type FileDiff,
 } from '../diffUtils';
@@ -42,6 +44,17 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
   );
 
   const changeKeyIndex = useMemo(() => buildChangeKeyIndex(file), [file]);
+  const changeTextIndex = useMemo(() => buildChangeTextIndex(file), [file]);
+
+  // Open comments whose anchor line text no longer matches their stored snippet.
+  const driftedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const c of comments) {
+      if (c.status === 'resolved') continue;
+      if (isDrifted(c.snippet, changeTextIndex.get(anchorKey(c.side, c.line)))) ids.add(c.id);
+    }
+    return ids;
+  }, [comments, changeTextIndex]);
 
   // Syntax-highlight the diff with refractor when we recognise the language.
   // Token colors come from the active [data-code-theme] (see code-themes.css).
@@ -83,6 +96,7 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
       result[changeKey] = (
         <CommentThread
           comments={threadComments}
+          driftedIds={driftedIds}
           autoFocus={activeAnchor?.key === aKey}
           onAdd={(body) =>
             onAdd(
@@ -104,7 +118,7 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
       );
     }
     return result;
-  }, [commentsByAnchor, activeAnchor, changeKeyIndex, path, onAdd, onResolve, onDelete]);
+  }, [commentsByAnchor, activeAnchor, changeKeyIndex, driftedIds, path, onAdd, onResolve, onDelete]);
 
   const openCount = comments.filter((c) => c.status === 'open').length;
 
