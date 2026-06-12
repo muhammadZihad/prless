@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseDiff } from 'react-diff-view';
 import type { Comment, DiffMode, DiffSide, RefsResponse } from '../shared/types';
 import { api } from './api';
-import { filePath, type FileDiff } from './diffUtils';
+import { anchorKey, buildChangeKeyIndex, filePath, type FileDiff } from './diffUtils';
 import { useTheme } from './theme';
 import { copyToClipboard } from './clipboard';
 import { DiffView, type AddAnchor } from './components/DiffView';
 import { FileList } from './components/FileList';
+import { OrphanedComments } from './components/OrphanedComments';
 import { RefPicker } from './components/RefPicker';
 import { CodeThemePicker, ThemeToggle } from './components/Controls';
 import { Toast, type ToastState } from './components/Toast';
@@ -141,6 +142,27 @@ export function App() {
     [comments],
   );
 
+  // Map each diffed file to the set of anchors present in the current diff.
+  const anchoredByFile = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const f of files) {
+      const keys = new Set<string>(buildChangeKeyIndex(f).keys());
+      map.set(filePath(f), keys);
+    }
+    return map;
+  }, [files]);
+
+  // Open comments whose anchor no longer exists anywhere in the current diff.
+  // Only meaningful once a diff has loaded, so don't flag when there are no files.
+  const orphanComments = useMemo(() => {
+    if (files.length === 0) return [];
+    return comments.filter(
+      (c) =>
+        c.status === 'open' &&
+        !anchoredByFile.get(c.file)?.has(anchorKey(c.side, c.line)),
+    );
+  }, [comments, anchoredByFile, files]);
+
   const openCount = comments.filter((c) => c.status === 'open').length;
 
   return (
@@ -215,6 +237,11 @@ export function App() {
           <FileList files={files} comments={comments} />
         </aside>
         <main>
+          <OrphanedComments
+            comments={orphanComments}
+            onResolve={handleResolve}
+            onDelete={handleDelete}
+          />
           {files.length === 0 ? (
             <div className="empty">No changes to review for this selection.</div>
           ) : (

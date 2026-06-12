@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { SimpleGit } from 'simple-git';
 import { CommentStore } from './comments.js';
 import { exportReview } from './export.js';
-import { getDiff, getRefs, getUntrackedFiles, GitError } from './git.js';
+import { getDiff, getRefs, GitError } from './git.js';
 import {
   CreateCommentSchema,
   DiffQuerySchema,
@@ -77,8 +77,9 @@ export async function registerApiRoutes(
 
   app.post('/api/export', async () => {
     const comments = await ctx.store.list();
-    const untracked = await getUntrackedFiles(ctx.git);
-    const result = await exportReview(ctx.repoRoot, comments, untracked);
+    // Use the working-tree diff as the reference for untracked + orphan detection.
+    const diff = await getDiff(ctx.git, 'working');
+    const result = await exportReview(ctx.repoRoot, comments, diff.untracked, diff.raw);
     return result;
   });
 }

@@ -55,4 +55,29 @@ describe('renderReviewMarkdown', () => {
     const noNote = renderReviewMarkdown([comment({})]);
     expect(noNote).not.toContain('untracked');
   });
+
+  it('splits comments whose snippet is absent from the diff into an Orphaned section', () => {
+    const rawDiff = '+++ b/src/a.ts\n+const present = 1;\n';
+    const md = renderReviewMarkdown(
+      [
+        comment({ id: '1', file: 'src/a.ts', snippet: 'const present = 1;', body: 'attached note' }),
+        comment({ id: '2', file: 'src/gone.ts', snippet: 'const removed = 9;', body: 'orphan note' }),
+      ],
+      [],
+      rawDiff,
+    );
+
+    expect(md).toContain('## Orphaned Comments');
+    // The orphan appears under the orphan section, the attached one does not.
+    const orphanIdx = md.indexOf('## Orphaned Comments');
+    expect(md.indexOf('orphan note')).toBeGreaterThan(orphanIdx);
+    expect(md.indexOf('attached note')).toBeLessThan(orphanIdx);
+    expect(md).toContain('**src/gone.ts** (line 1, new)');
+  });
+
+  it('does not create an Orphaned section without a diff or when snippets match', () => {
+    expect(renderReviewMarkdown([comment({})])).not.toContain('Orphaned');
+    const md = renderReviewMarkdown([comment({ snippet: 'x' })], [], 'context x here');
+    expect(md).not.toContain('Orphaned');
+  });
 });

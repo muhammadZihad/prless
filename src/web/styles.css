@@ -576,6 +576,55 @@ main {
   cursor: help;
 }
 
+.orphaned {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--open);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+
+.orphaned-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.orphaned-hint {
+  margin: 6px 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.orphaned-comment {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.orphaned-loc {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.orphaned-loc .muted {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.orphaned-snippet {
+  display: block;
+  margin: 6px 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  background: var(--bg-inset);
+  color: var(--text-muted);
+  overflow-x: auto;
+}
+
 .comment-actions .spacer {
   flex: 1;
 }
