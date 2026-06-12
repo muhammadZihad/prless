@@ -56,4 +56,14 @@ describe('parseOpenArgs', () => {
     expect(() => parseOpenArgs([])).toThrow(CliError);
     expect(() => parseOpenArgs(['--no-open'])).toThrow(CliError);
   });
+
+  it('collects paths after --', () => {
+    const opts = parseOpenArgs(['.', '--port', '4200', '--', 'src', 'app', 'tests']);
+    expect(opts.port).toBe(4200);
+    expect(opts.paths).toEqual(['src', 'app', 'tests']);
+  });
+
+  it('defaults to no path filter', () => {
+    expect(parseOpenArgs(['.']).paths).toEqual([]);
+  });
 });

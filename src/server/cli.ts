@@ -17,6 +17,7 @@ interface OpenOptions {
   dev: boolean;
   port: number;
   noOpen: boolean;
+  paths: string[];
 }
 
 const USAGE = `prless — local code review with agent-agnostic AI handoff
@@ -31,11 +32,13 @@ Options (for "open"):
   --port <n>     Port to serve on, 1-65535 (default 4100, or $PRLESS_PORT)
   --no-open      Do not launch a browser automatically
   --dev          Internal: run the API only (UI served by the Vite dev server)
+  -- <paths…>    Limit the review to the given paths (everything after --)
 
 Examples:
   prless open .
   prless open ~/projects/my-app
   prless open ./my-app --port 4200
+  prless open . -- src app tests
 `;
 
 /** Validate a port value, throwing a CliError on anything outside 1-65535. */
@@ -54,16 +57,21 @@ export function parsePort(value: string | undefined): number {
 }
 
 export function parseOpenArgs(rest: string[]): OpenOptions {
+  // Everything after a bare `--` is a list of paths to scope the review to.
+  const sep = rest.indexOf('--');
+  const paths = sep === -1 ? [] : rest.slice(sep + 1).filter((p) => p.length > 0);
+  const args = sep === -1 ? rest : rest.slice(0, sep);
+
   let repoArg: string | undefined;
   let dev = false;
   let noOpen = false;
   let port = parsePort(process.env.PRLESS_PORT ?? '4100');
 
-  for (let i = 0; i < rest.length; i++) {
-    const a = rest[i];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
     if (a === '--dev') dev = true;
     else if (a === '--no-open') noOpen = true;
-    else if (a === '--port') port = parsePort(rest[++i]);
+    else if (a === '--port') port = parsePort(args[++i]);
     else if (!a.startsWith('-') && repoArg === undefined) repoArg = a;
   }
 
@@ -79,6 +87,7 @@ export function parseOpenArgs(rest: string[]): OpenOptions {
     dev,
     noOpen,
     port,
+    paths,
   };
 }
 
@@ -93,7 +102,7 @@ async function runOpen(opts: OpenOptions): Promise<void> {
     throw err;
   }
 
-  const app = await buildServer({ repoRoot: opts.repoRoot, dev: opts.dev });
+  const app = await buildServer({ repoRoot: opts.repoRoot, dev: opts.dev, paths: opts.paths });
   try {
     await app.listen({ port: opts.port, host: '127.0.0.1' });
   } catch (err) {

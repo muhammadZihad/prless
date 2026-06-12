@@ -15,6 +15,7 @@ export interface ApiContext {
   repoRoot: string;
   git: SimpleGit;
   store: CommentStore;
+  paths: string[]; // limit the review to these paths (CLI `-- <paths>`)
 }
 
 export async function registerApiRoutes(
@@ -33,7 +34,7 @@ export async function registerApiRoutes(
     const { mode, base, head } = parsed.data;
     try {
       const ig = await loadIgnore(ctx.repoRoot);
-      return await getDiff(ctx.git, mode, base, head, ig);
+      return await getDiff(ctx.git, mode, base, head, ig, ctx.paths);
     } catch (err) {
       if (err instanceof GitError) {
         return reply.code(400).send({ error: err.message });
@@ -83,7 +84,7 @@ export async function registerApiRoutes(
     // Don't export comments on files hidden by .prlessignore.
     const comments = ig ? all.filter((c) => !ig.ignores(c.file)) : all;
     // Use the working-tree diff as the reference for untracked + orphan detection.
-    const diff = await getDiff(ctx.git, 'working', undefined, undefined, ig);
+    const diff = await getDiff(ctx.git, 'working', undefined, undefined, ig, ctx.paths);
     const result = await exportReview(ctx.repoRoot, comments, diff.untracked, diff.raw);
     return result;
   });

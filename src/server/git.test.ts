@@ -49,6 +49,20 @@ describe('git layer', () => {
     expect(untracked).not.toContain('ignored.ts');
   });
 
+  it('scopes the diff to the given paths', async () => {
+    const git = createGit(dir);
+    await writeFile(path.join(dir, 'a.ts'), 'const a = 2;\n');
+    await writeFile(path.join(dir, 'b.ts'), 'const b = 2;\n');
+    await git.add('.');
+    await git.commit('add b');
+    await writeFile(path.join(dir, 'a.ts'), 'const a = 3;\n');
+    await writeFile(path.join(dir, 'b.ts'), 'const b = 3;\n');
+
+    const scoped = await getDiff(createGit(dir), 'working', undefined, undefined, null, ['a.ts']);
+    expect(scoped.raw).toContain('a.ts');
+    expect(scoped.raw).not.toContain('b.ts');
+  });
+
   it('reports untracked files in a working-tree diff but not in compare mode', async () => {
     await writeFile(path.join(dir, 'new.ts'), 'export const n = 1;\n');
     const working = await getDiff(createGit(dir), 'working');

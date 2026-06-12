@@ -13,6 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export interface ServerOptions {
   repoRoot: string;
   dev: boolean;
+  paths?: string[]; // limit the review to these paths (CLI `-- <paths>`)
 }
 
 export async function buildServer(opts: ServerOptions): Promise<FastifyInstance> {
@@ -37,7 +38,7 @@ export async function buildServer(opts: ServerOptions): Promise<FastifyInstance>
   const git = createGit(opts.repoRoot);
   const store = new CommentStore(opts.repoRoot);
 
-  await registerApiRoutes(app, { repoRoot: opts.repoRoot, git, store });
+  await registerApiRoutes(app, { repoRoot: opts.repoRoot, git, store, paths: opts.paths ?? [] });
 
   // In dev, Vite serves the UI and proxies /api here. In a built install we
   // serve the compiled web assets ourselves so the CLI is a single process.
