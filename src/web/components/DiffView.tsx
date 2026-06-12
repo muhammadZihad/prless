@@ -35,15 +35,29 @@ interface Props {
   onAddFile: (file: string, body: string) => void;
   onResolve: (id: string, resolved: boolean) => void;
   onDelete: (id: string) => void;
+  collapsedByDefault?: boolean; // generated/large files start collapsed
+  collapseReason?: string; // why it's collapsed (shown in the placeholder)
 }
 
-export function DiffView({ file, viewType, comments, onAdd, onAddFile, onResolve, onDelete }: Props) {
+export function DiffView({
+  file,
+  viewType,
+  comments,
+  onAdd,
+  onAddFile,
+  onResolve,
+  onDelete,
+  collapsedByDefault = false,
+  collapseReason,
+}: Props) {
   const path = filePath(file);
   // The line the user clicked, with the context captured for a durable anchor.
   const [activeAnchor, setActiveAnchor] = useState<{ key: string; anchor: AddAnchor } | null>(
     null,
   );
   const [showFileComposer, setShowFileComposer] = useState(false);
+  // Collapse generated/large files, but never hide one that has comments.
+  const [expanded, setExpanded] = useState(!collapsedByDefault || comments.length > 0);
 
   // File-scoped comments render at the header; line comments anchor to the diff.
   const fileComments = useMemo(() => comments.filter((c) => c.scope === 'file'), [comments]);
@@ -134,6 +148,11 @@ export function DiffView({ file, viewType, comments, onAdd, onAddFile, onResolve
         <span className="file-path">{path}</span>
         {openCount > 0 && <span className="badge">{openCount}</span>}
         <span className="spacer" />
+        {collapsedByDefault && (
+          <button className="file-comment-toggle" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Collapse' : 'Show diff'}
+          </button>
+        )}
         <button className="file-comment-toggle" onClick={() => setShowFileComposer((v) => !v)}>
           {showFileComposer ? 'Cancel' : '+ File comment'}
         </button>
@@ -154,27 +173,33 @@ export function DiffView({ file, viewType, comments, onAdd, onAddFile, onResolve
           />
         </div>
       )}
-      <Diff
-        viewType={viewType}
-        diffType={file.type}
-        hunks={file.hunks}
-        tokens={tokens}
-        widgets={widgets}
-        gutterEvents={{
-          onClick: ({ change }) => {
-            if (!change) return;
-            const anchor = changeAnchor(change);
-            setActiveAnchor({
-              key: anchorKey(anchor.side, anchor.line),
-              anchor: { snippet: changeText(change), ...changeContext(file, change) },
-            });
-          },
-        }}
-      >
-        {(hunks: FileDiff['hunks']) =>
-          hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)
-        }
-      </Diff>
+      {expanded ? (
+        <Diff
+          viewType={viewType}
+          diffType={file.type}
+          hunks={file.hunks}
+          tokens={tokens}
+          widgets={widgets}
+          gutterEvents={{
+            onClick: ({ change }) => {
+              if (!change) return;
+              const anchor = changeAnchor(change);
+              setActiveAnchor({
+                key: anchorKey(anchor.side, anchor.line),
+                anchor: { snippet: changeText(change), ...changeContext(file, change) },
+              });
+            },
+          }}
+        >
+          {(hunks: FileDiff['hunks']) =>
+            hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)
+          }
+        </Diff>
+      ) : (
+        <button className="diff-collapsed" onClick={() => setExpanded(true)}>
+          {collapseReason ?? 'Collapsed'} — click to show diff
+        </button>
+      )}
     </section>
   );
 }

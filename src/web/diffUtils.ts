@@ -51,6 +51,39 @@ export function anchorKey(side: DiffSide, line: number): string {
   return `${side}:${line}`;
 }
 
+const GENERATED_PATTERNS = [
+  /(^|\/)package-lock\.json$/,
+  /(^|\/)(yarn\.lock|pnpm-lock\.yaml|composer\.lock|Cargo\.lock|poetry\.lock|Gemfile\.lock)$/,
+  /\.min\.(js|css)$/,
+  /\.map$/,
+  /(^|\/)(dist|build|coverage|node_modules|vendor|out)\//,
+  /\.snap$/,
+];
+
+/** Heuristic: is this a generated/lockfile/minified path worth collapsing? */
+export function isGeneratedFile(path: string): boolean {
+  return GENERATED_PATTERNS.some((re) => re.test(path));
+}
+
+/** Total added + removed lines in a file diff. */
+export function countChanges(file: FileDiff): number {
+  let n = 0;
+  for (const hunk of file.hunks) {
+    for (const change of hunk.changes) {
+      if (change.type === 'insert' || change.type === 'delete') n++;
+    }
+  }
+  return n;
+}
+
+/** Aggregate changed-line and file counts across a set of file diffs. */
+export function diffStats(files: FileDiff[]): { files: number; changes: number } {
+  return {
+    files: files.length,
+    changes: files.reduce((sum, f) => sum + countChanges(f), 0),
+  };
+}
+
 /** Map "side:line" -> the current text at that anchor, for drift detection. */
 export function buildChangeTextIndex(file: FileDiff): Map<string, string> {
   const index = new Map<string, string>();

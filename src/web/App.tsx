@@ -2,7 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseDiff } from 'react-diff-view';
 import type { Comment, DiffMode, DiffSide, RefsResponse } from '../shared/types';
 import { api } from './api';
-import { anchorKey, buildChangeKeyIndex, filePath, type FileDiff } from './diffUtils';
+import {
+  anchorKey,
+  buildChangeKeyIndex,
+  countChanges,
+  diffStats,
+  filePath,
+  isGeneratedFile,
+  type FileDiff,
+} from './diffUtils';
 import { useTheme } from './theme';
 import { copyToClipboard } from './clipboard';
 import { DiffView, type AddAnchor } from './components/DiffView';
@@ -22,6 +30,10 @@ export function App() {
   const [ignored, setIgnored] = useState<string[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [viewType, setViewType] = useState<'unified' | 'split'>('split');
+  const [fileQuery, setFileQuery] = useState('');
+  const [commentedOnly, setCommentedOnly] = useState(false);
+  const [hideGenerated, setHideGenerated] = useState(false);
+  const [largeDismissed, setLargeDismissed] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [error, setError] = useState<string>('');
   const [exported, setExported] = useState(false);
@@ -179,6 +191,25 @@ export function App() {
 
   const openCount = comments.filter((c) => c.status === 'open').length;
 
+  // Files that carry at least one comment (any status).
+  const commentedFiles = useMemo(() => new Set(comments.map((c) => c.file)), [comments]);
+
+  // Apply the search box + "commented only" + "hide generated" filters.
+  const visibleFiles = useMemo(() => {
+    const q = fileQuery.trim().toLowerCase();
+    return files.filter((f) => {
+      const path = filePath(f);
+      if (q && !path.toLowerCase().includes(q)) return false;
+      if (hideGenerated && isGeneratedFile(path)) return false;
+      if (commentedOnly && !commentedFiles.has(path)) return false;
+      return true;
+    });
+  }, [files, fileQuery, hideGenerated, commentedOnly, commentedFiles]);
+
+  // Warn when the whole diff is large enough to be sluggish.
+  const stats = useMemo(() => diffStats(files), [files]);
+  const isLargeDiff = stats.changes > 10_000 || stats.files > 75;
+
   return (
     <div className="app">
       <header className="topbar">
@@ -204,6 +235,28 @@ export function App() {
             setHead(h);
           }}
         />
+        <input
+          className="file-search"
+          type="search"
+          value={fileQuery}
+          placeholder="Search files…"
+          aria-label="Search files"
+          onChange={(e) => setFileQuery(e.target.value)}
+        />
+        <button
+          className={`toggle${commentedOnly ? ' active' : ''}`}
+          onClick={() => setCommentedOnly((v) => !v)}
+          title="Show only files with comments"
+        >
+          Commented
+        </button>
+        <button
+          className={`toggle${hideGenerated ? ' active' : ''}`}
+          onClick={() => setHideGenerated((v) => !v)}
+          title="Hide generated files (lockfiles, dist/, *.min.js, …)"
+        >
+          Hide generated
+        </button>
         <div className="spacer" />
         <div className="toolset">
           <CodeThemePicker value={codeTheme} onChange={setCodeTheme} />
@@ -253,9 +306,19 @@ export function App() {
         </div>
       )}
 
+      {isLargeDiff && !largeDismissed && (
+        <div className="banner warning">
+          This diff has {stats.changes.toLocaleString()} changed lines across {stats.files} files.
+          Consider <code>.prlessignore</code>, path filters (<code>prless open . -- src</code>), or
+          the “Commented” filter to narrow it down.
+          <span className="spacer" />
+          <button onClick={() => setLargeDismissed(true)}>Dismiss</button>
+        </div>
+      )}
+
       <div className="layout">
         <aside>
-          <FileList files={files} comments={comments} />
+          <FileList files={visibleFiles} comments={comments} />
         </aside>
         <main>
           <OrphanedComments
@@ -263,21 +326,34 @@ export function App() {
             onResolve={handleResolve}
             onDelete={handleDelete}
           />
-          {files.length === 0 ? (
-            <div className="empty">No changes to review for this selection.</div>
+          {visibleFiles.length === 0 ? (
+            <div className="empty">
+              {files.length === 0
+                ? 'No changes to review for this selection.'
+                : 'No files match the current filters.'}
+            </div>
           ) : (
-            files.map((file) => (
-              <DiffView
-                key={filePath(file)}
-                file={file}
-                viewType={viewType}
-                comments={commentsForFile(filePath(file))}
-                onAdd={handleAdd}
-                onAddFile={handleAddFile}
-                onResolve={handleResolve}
-                onDelete={handleDelete}
-              />
-            ))
+            visibleFiles.map((file) => {
+              const path = filePath(file);
+              const fileComments = commentsForFile(path);
+              const generated = isGeneratedFile(path);
+              const large = countChanges(file) > 500;
+              const collapsedByDefault = (generated || large) && fileComments.length === 0;
+              return (
+                <DiffView
+                  key={path}
+                  file={file}
+                  viewType={viewType}
+                  comments={fileComments}
+                  collapsedByDefault={collapsedByDefault}
+                  collapseReason={generated ? 'Generated file' : large ? 'Large file' : undefined}
+                  onAdd={handleAdd}
+                  onAddFile={handleAddFile}
+                  onResolve={handleResolve}
+                  onDelete={handleDelete}
+                />
+              );
+            })
           )}
         </main>
       </div>

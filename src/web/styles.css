@@ -151,6 +151,37 @@ body {
   gap: 8px;
 }
 
+.file-search {
+  font: inherit;
+  padding: 6px 10px;
+  width: 180px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.file-search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button.toggle.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.diff-collapsed {
+  width: 100%;
+  justify-content: center;
+  padding: 14px;
+  border: none;
+  border-radius: 0;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+
 /* ───────────────────────── Controls ───────────────────────── */
 
 button {
