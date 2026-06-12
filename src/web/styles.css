@@ -189,6 +189,15 @@ button.primary:hover {
   background: var(--accent-hover);
 }
 
+button.primary.is-exported {
+  background: var(--resolved);
+  border-color: transparent;
+}
+
+button.primary.is-exported:hover {
+  filter: brightness(0.96);
+}
+
 button.icon {
   padding: 7px;
   width: 34px;
@@ -598,4 +607,83 @@ kbd {
   border-radius: 5px;
   background: var(--bg-inset);
   color: var(--text-muted);
+}
+
+/* ───────────────────────── Toast ───────────────────────── */
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 11px 12px 11px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: var(--shadow-pop);
+  transform: translate(-50%, 0);
+  animation: toast-in 0.32s var(--ease);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.toast-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.toast-success .toast-icon {
+  color: var(--resolved);
+  background: var(--resolved-soft);
+}
+
+.toast-error .toast-icon {
+  color: var(--danger);
+  background: color-mix(in oklch, var(--danger) 16%, transparent);
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.toast-close {
+  border: none;
+  background: none;
+  padding: 0 4px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  background: none;
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
 }

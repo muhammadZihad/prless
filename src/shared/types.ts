@@ -43,4 +43,5 @@ export interface DiffResponse {
 export interface ExportResponse {
   path: string;
   count: number;
+  content: string; // the rendered review.md — copied to the clipboard for pasting to an agent
 }

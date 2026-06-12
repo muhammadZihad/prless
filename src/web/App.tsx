@@ -4,10 +4,12 @@ import type { Comment, DiffMode, DiffSide, RefsResponse } from '../shared/types'
 import { api } from './api';
 import { filePath, type FileDiff } from './diffUtils';
 import { useTheme } from './theme';
+import { copyToClipboard } from './clipboard';
 import { DiffView } from './components/DiffView';
 import { FileList } from './components/FileList';
 import { RefPicker } from './components/RefPicker';
 import { CodeThemePicker, ThemeToggle } from './components/Controls';
+import { Toast, type ToastState } from './components/Toast';
 
 export function App() {
   const [refs, setRefs] = useState<RefsResponse | null>(null);
@@ -17,8 +19,9 @@ export function App() {
   const [raw, setRaw] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [viewType, setViewType] = useState<'unified' | 'split'>('split');
-  const [status, setStatus] = useState<string>('');
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [error, setError] = useState<string>('');
+  const [exported, setExported] = useState(false);
   const { appTheme, codeTheme, setCodeTheme, toggleAppTheme } = useTheme();
 
   const files = useMemo<FileDiff[]>(() => {
@@ -54,6 +57,11 @@ export function App() {
     loadDiff();
   }, [loadDiff]);
 
+  // A prior export is stale once comments change, so reset the button.
+  useEffect(() => {
+    setExported(false);
+  }, [comments]);
+
   const handleAdd = useCallback(
     async (file: string, side: DiffSide, line: number, snippet: string, body: string) => {
       try {
@@ -87,7 +95,29 @@ export function App() {
   const handleExport = useCallback(async () => {
     try {
       const res = await api.exportReview();
-      setStatus(`Exported ${res.count} open comment(s) → ${res.path}`);
+      if (res.count === 0) {
+        setToast({ message: 'No open comments to export.', tone: 'error' });
+        return;
+      }
+      // Fall back to a path-based instruction if an older server build didn't
+      // return the rendered content, so we never copy a literal "undefined".
+      const instructions =
+        res.content && res.content.trim()
+          ? res.content
+          : `Address the code review comments in ${res.path}. For each comment, make the requested change in the referenced file, then briefly note what you changed.`;
+      const copied = await copyToClipboard(instructions);
+      setExported(true);
+      setToast(
+        copied
+          ? {
+              message: 'Instructions copied — paste them into your AI agent.',
+              tone: 'success',
+            }
+          : {
+              message: `Clipboard blocked. Open ${res.path} and paste it to your agent.`,
+              tone: 'error',
+            },
+      );
     } catch (e) {
       setError(String(e));
     }
@@ -130,15 +160,28 @@ export function App() {
           </button>
           <ThemeToggle theme={appTheme} onToggle={toggleAppTheme} />
           <div className="divider" />
-          <button className="primary" onClick={handleExport}>
-            Export for AI
-            <span className="count-pill">{openCount}</span>
+          <button
+            className={`primary${exported ? ' is-exported' : ''}`}
+            onClick={handleExport}
+          >
+            {exported ? (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+                Exported
+              </>
+            ) : (
+              <>
+                Export for AI
+                <span className="count-pill">{openCount}</span>
+              </>
+            )}
           </button>
         </div>
       </header>
 
       {error && <div className="banner error">{error}</div>}
-      {status && <div className="banner info">{status}</div>}
 
       <div className="layout">
         <aside>
@@ -162,6 +205,8 @@ export function App() {
           )}
         </main>
       </div>
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }
