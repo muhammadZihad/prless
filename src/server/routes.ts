@@ -7,7 +7,7 @@ import type {
 } from '../shared/types.js';
 import { CommentStore } from './comments.js';
 import { exportReview } from './export.js';
-import { getDiff, getRefs, GitError } from './git.js';
+import { getDiff, getRefs, getUntrackedFiles, GitError } from './git.js';
 
 export interface ApiContext {
   repoRoot: string;
@@ -76,7 +76,8 @@ export async function registerApiRoutes(
 
   app.post('/api/export', async () => {
     const comments = await ctx.store.list();
-    const result = await exportReview(ctx.repoRoot, comments);
+    const untracked = await getUntrackedFiles(ctx.git);
+    const result = await exportReview(ctx.repoRoot, comments, untracked);
     return result;
   });
 }

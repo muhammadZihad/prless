@@ -303,6 +303,19 @@ button:disabled {
   color: var(--accent);
 }
 
+.banner.warning {
+  background: var(--open-soft);
+  color: var(--open);
+}
+
+.banner.warning code {
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in oklch, var(--open) 16%, transparent);
+}
+
 /* ───────────────────────── Layout ───────────────────────── */
 
 .layout {

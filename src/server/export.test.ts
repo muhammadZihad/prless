@@ -46,4 +46,13 @@ describe('renderReviewMarkdown', () => {
     expect(md).toContain('keep me');
     expect(md).not.toContain('drop me');
   });
+
+  it('notes untracked files when provided', () => {
+    const withNote = renderReviewMarkdown([comment({})], ['src/new.ts']);
+    expect(withNote).toContain('1 untracked file was not included');
+    expect(withNote).toContain('`src/new.ts`');
+
+    const noNote = renderReviewMarkdown([comment({})]);
+    expect(noNote).not.toContain('untracked');
+  });
 });

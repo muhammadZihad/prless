@@ -47,6 +47,7 @@ export interface DiffResponse {
   base?: string;
   head?: string;
   raw: string; // unified diff text
+  untracked: string[]; // untracked files not included in the diff (working mode)
 }
 
 export interface ExportResponse {

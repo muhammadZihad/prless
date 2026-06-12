@@ -23,6 +23,18 @@ export async function getRefs(git: SimpleGit): Promise<RefsResponse> {
 }
 
 /**
+ * List untracked files (respecting .gitignore). These never appear in a
+ * `git diff`, so the UI warns the user that they are excluded from the review.
+ */
+export async function getUntrackedFiles(git: SimpleGit): Promise<string[]> {
+  const out = await git.raw(['ls-files', '--others', '--exclude-standard']);
+  return out
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+/**
  * Produce a unified diff for the requested mode.
  * - working: all uncommitted changes vs HEAD (staged + unstaged)
  * - staged: staged changes only
@@ -55,5 +67,9 @@ export async function getDiff(
   // Stable, machine-friendly diff output.
   const raw = await git.diff(['--no-color', ...args]);
 
-  return { mode, base, head, raw };
+  // Untracked files only matter when reviewing the working tree — staged and
+  // compare modes are explicit about what they include.
+  const untracked = mode === 'working' ? await getUntrackedFiles(git) : [];
+
+  return { mode, base, head, raw, untracked };
 }
