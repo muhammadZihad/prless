@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-12
+
 ### Added
 
 - GitHub Actions CI: typecheck, test, build, and `npm pack --dry-run` on a matrix of
