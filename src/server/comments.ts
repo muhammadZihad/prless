@@ -70,6 +70,9 @@ export class CommentStore {
       status: 'open',
       createdAt: now,
       updatedAt: now,
+      ...(input.beforeContext ? { beforeContext: input.beforeContext } : {}),
+      ...(input.afterContext ? { afterContext: input.afterContext } : {}),
+      ...(input.hunkHeader ? { hunkHeader: input.hunkHeader } : {}),
     };
     comments.push(comment);
     await this.save(comments);

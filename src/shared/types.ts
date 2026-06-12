@@ -12,6 +12,11 @@ export interface Comment {
   status: CommentStatus;
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
+  // Durable anchor context — lets a comment be re-located and drift-checked
+  // when line numbers shift. Optional for back-compat with pre-v0.4 comments.
+  beforeContext?: string[]; // a few lines above the anchor
+  afterContext?: string[]; // a few lines below the anchor
+  hunkHeader?: string; // the @@ -a,b +c,d @@ header of the containing hunk
 }
 
 /** Current on-disk schema version for .prless/comments.json. */
@@ -25,6 +30,9 @@ export interface CommentsFile {
 
 export type NewComment = Pick<Comment, 'file' | 'line' | 'side' | 'body'> & {
   snippet?: string;
+  beforeContext?: string[];
+  afterContext?: string[];
+  hunkHeader?: string;
 };
 
 export type CommentPatch = Partial<Pick<Comment, 'body' | 'status'>>;

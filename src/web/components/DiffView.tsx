@@ -13,25 +13,33 @@ import {
   anchorKey,
   buildChangeKeyIndex,
   changeAnchor,
+  changeContext,
   changeText,
   filePath,
+  type ChangeContext,
   type FileDiff,
 } from '../diffUtils';
 import { CommentThread } from './CommentThread';
+
+export interface AddAnchor extends ChangeContext {
+  snippet: string;
+}
 
 interface Props {
   file: FileDiff;
   viewType: 'unified' | 'split';
   comments: Comment[];
-  onAdd: (file: string, side: DiffSide, line: number, snippet: string, body: string) => void;
+  onAdd: (file: string, side: DiffSide, line: number, anchor: AddAnchor, body: string) => void;
   onResolve: (id: string, resolved: boolean) => void;
   onDelete: (id: string) => void;
 }
 
 export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete }: Props) {
   const path = filePath(file);
-  // anchorKey -> the change's raw text, so we can store a snippet when commenting.
-  const [activeAnchor, setActiveAnchor] = useState<{ key: string; snippet: string } | null>(null);
+  // The line the user clicked, with the context captured for a durable anchor.
+  const [activeAnchor, setActiveAnchor] = useState<{ key: string; anchor: AddAnchor } | null>(
+    null,
+  );
 
   const changeKeyIndex = useMemo(() => buildChangeKeyIndex(file), [file]);
 
@@ -77,7 +85,18 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
           comments={threadComments}
           autoFocus={activeAnchor?.key === aKey}
           onAdd={(body) =>
-            onAdd(path, side as DiffSide, line, activeAnchor?.snippet ?? '', body)
+            onAdd(
+              path,
+              side as DiffSide,
+              line,
+              activeAnchor?.anchor ?? {
+                snippet: '',
+                beforeContext: [],
+                afterContext: [],
+                hunkHeader: '',
+              },
+              body,
+            )
           }
           onResolve={onResolve}
           onDelete={onDelete}
@@ -107,7 +126,7 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
             const anchor = changeAnchor(change);
             setActiveAnchor({
               key: anchorKey(anchor.side, anchor.line),
-              snippet: changeText(change),
+              anchor: { snippet: changeText(change), ...changeContext(file, change) },
             });
           },
         }}

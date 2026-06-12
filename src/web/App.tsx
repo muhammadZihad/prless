@@ -5,7 +5,7 @@ import { api } from './api';
 import { filePath, type FileDiff } from './diffUtils';
 import { useTheme } from './theme';
 import { copyToClipboard } from './clipboard';
-import { DiffView } from './components/DiffView';
+import { DiffView, type AddAnchor } from './components/DiffView';
 import { FileList } from './components/FileList';
 import { RefPicker } from './components/RefPicker';
 import { CodeThemePicker, ThemeToggle } from './components/Controls';
@@ -67,9 +67,18 @@ export function App() {
   }, [comments]);
 
   const handleAdd = useCallback(
-    async (file: string, side: DiffSide, line: number, snippet: string, body: string) => {
+    async (file: string, side: DiffSide, line: number, anchor: AddAnchor, body: string) => {
       try {
-        const created = await api.addComment({ file, side, line, body, snippet });
+        const created = await api.addComment({
+          file,
+          side,
+          line,
+          body,
+          snippet: anchor.snippet,
+          beforeContext: anchor.beforeContext,
+          afterContext: anchor.afterContext,
+          hunkHeader: anchor.hunkHeader,
+        });
         setComments((prev) => [...prev, created]);
       } catch (e) {
         setError(String(e));

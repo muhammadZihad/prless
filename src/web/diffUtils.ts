@@ -50,3 +50,27 @@ export function buildChangeKeyIndex(file: FileDiff): Map<string, string> {
 export function anchorKey(side: DiffSide, line: number): string {
   return `${side}:${line}`;
 }
+
+export interface ChangeContext {
+  beforeContext: string[];
+  afterContext: string[];
+  hunkHeader: string;
+}
+
+/**
+ * Capture durable anchor context for a change: a few lines above/below and the
+ * containing hunk header. Lets a comment be re-located when line numbers shift.
+ */
+export function changeContext(file: FileDiff, change: Change, n = 3): ChangeContext {
+  const key = getChangeKey(change);
+  for (const hunk of file.hunks) {
+    const idx = hunk.changes.findIndex((c) => getChangeKey(c) === key);
+    if (idx === -1) continue;
+    return {
+      beforeContext: hunk.changes.slice(Math.max(0, idx - n), idx).map(changeText),
+      afterContext: hunk.changes.slice(idx + 1, idx + 1 + n).map(changeText),
+      hunkHeader: hunk.content,
+    };
+  }
+  return { beforeContext: [], afterContext: [], hunkHeader: '' };
+}

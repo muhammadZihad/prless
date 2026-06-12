@@ -16,6 +16,9 @@ export const CreateCommentSchema = z.object({
   side: z.enum(['old', 'new']),
   body: z.string().min(1),
   snippet: z.string().optional(),
+  beforeContext: z.array(z.string()).optional(),
+  afterContext: z.array(z.string()).optional(),
+  hunkHeader: z.string().optional(),
 });
 
 export const PatchCommentSchema = z
