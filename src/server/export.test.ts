@@ -75,6 +75,15 @@ describe('renderReviewMarkdown', () => {
     expect(md).toContain('**src/gone.ts** (line 1, new)');
   });
 
+  it('renders file-level comments under their file with a marker', () => {
+    const md = renderReviewMarkdown([
+      comment({ scope: 'file', file: 'src/a.ts', body: 'split this module', snippet: '' }),
+    ]);
+    expect(md).toContain('## src/a.ts');
+    expect(md).toContain('**File comment:**');
+    expect(md).toContain('split this module');
+  });
+
   it('does not create an Orphaned section without a diff or when snippets match', () => {
     expect(renderReviewMarkdown([comment({})])).not.toContain('Orphaned');
     const md = renderReviewMarkdown([comment({ snippet: 'x' })], [], 'context x here');

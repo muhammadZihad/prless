@@ -88,9 +88,12 @@ export function renderReviewMarkdown(
       .sort((a, b) => a.line - b.line || a.createdAt.localeCompare(b.createdAt));
 
     const items = lines.map((c) => {
+      const body = c.body.trim().replace(/\n/g, '\n    ');
+      if (c.scope === 'file') {
+        return `- **File comment:**\n  → ${body}`;
+      }
       const snippet = c.snippet.trim();
       const context = snippet ? ` \`${snippet}\`` : '';
-      const body = c.body.trim().replace(/\n/g, '\n    ');
       return `- **Line ${c.line} (${c.side}):**${context}\n  → ${body}`;
     });
 

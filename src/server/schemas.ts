@@ -10,16 +10,21 @@ export const DiffQuerySchema = z
     message: 'compare mode requires both base and head',
   });
 
-export const CreateCommentSchema = z.object({
-  file: z.string().min(1),
-  line: z.number().int().positive(),
-  side: z.enum(['old', 'new']),
-  body: z.string().min(1),
-  snippet: z.string().optional(),
-  beforeContext: z.array(z.string()).optional(),
-  afterContext: z.array(z.string()).optional(),
-  hunkHeader: z.string().optional(),
-});
+export const CreateCommentSchema = z
+  .object({
+    file: z.string().min(1),
+    scope: z.enum(['line', 'file']).optional(),
+    line: z.number().int().positive().optional(),
+    side: z.enum(['old', 'new']).optional(),
+    body: z.string().min(1),
+    snippet: z.string().optional(),
+    beforeContext: z.array(z.string()).optional(),
+    afterContext: z.array(z.string()).optional(),
+    hunkHeader: z.string().optional(),
+  })
+  .refine((d) => d.scope === 'file' || (d.line !== undefined && d.side !== undefined), {
+    message: 'line and side are required for line comments',
+  });
 
 export const PatchCommentSchema = z
   .object({

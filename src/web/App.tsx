@@ -88,6 +88,15 @@ export function App() {
     [],
   );
 
+  const handleAddFile = useCallback(async (file: string, body: string) => {
+    try {
+      const created = await api.addComment({ file, body, scope: 'file' });
+      setComments((prev) => [...prev, created]);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
   const handleResolve = useCallback(async (id: string, resolved: boolean) => {
     try {
       const updated = await api.patchComment(id, { status: resolved ? 'resolved' : 'open' });
@@ -159,6 +168,7 @@ export function App() {
     return comments.filter(
       (c) =>
         c.status === 'open' &&
+        c.scope !== 'file' && // file comments aren't line-anchored, so never orphaned
         !anchoredByFile.get(c.file)?.has(anchorKey(c.side, c.line)),
     );
   }, [comments, anchoredByFile, files]);
@@ -252,6 +262,7 @@ export function App() {
                 viewType={viewType}
                 comments={commentsForFile(filePath(file))}
                 onAdd={handleAdd}
+                onAddFile={handleAddFile}
                 onResolve={handleResolve}
                 onDelete={handleDelete}
               />

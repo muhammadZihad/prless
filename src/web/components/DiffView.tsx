@@ -32,16 +32,22 @@ interface Props {
   viewType: 'unified' | 'split';
   comments: Comment[];
   onAdd: (file: string, side: DiffSide, line: number, anchor: AddAnchor, body: string) => void;
+  onAddFile: (file: string, body: string) => void;
   onResolve: (id: string, resolved: boolean) => void;
   onDelete: (id: string) => void;
 }
 
-export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete }: Props) {
+export function DiffView({ file, viewType, comments, onAdd, onAddFile, onResolve, onDelete }: Props) {
   const path = filePath(file);
   // The line the user clicked, with the context captured for a durable anchor.
   const [activeAnchor, setActiveAnchor] = useState<{ key: string; anchor: AddAnchor } | null>(
     null,
   );
+  const [showFileComposer, setShowFileComposer] = useState(false);
+
+  // File-scoped comments render at the header; line comments anchor to the diff.
+  const fileComments = useMemo(() => comments.filter((c) => c.scope === 'file'), [comments]);
+  const lineComments = useMemo(() => comments.filter((c) => c.scope !== 'file'), [comments]);
 
   const changeKeyIndex = useMemo(() => buildChangeKeyIndex(file), [file]);
   const changeTextIndex = useMemo(() => buildChangeTextIndex(file), [file]);
@@ -49,12 +55,12 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
   // Open comments whose anchor line text no longer matches their stored snippet.
   const driftedIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const c of comments) {
+    for (const c of lineComments) {
       if (c.status === 'resolved') continue;
       if (isDrifted(c.snippet, changeTextIndex.get(anchorKey(c.side, c.line)))) ids.add(c.id);
     }
     return ids;
-  }, [comments, changeTextIndex]);
+  }, [lineComments, changeTextIndex]);
 
   // Syntax-highlight the diff with refractor when we recognise the language.
   // Token colors come from the active [data-code-theme] (see code-themes.css).
@@ -70,14 +76,14 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
 
   const commentsByAnchor = useMemo(() => {
     const map = new Map<string, Comment[]>();
-    for (const c of comments) {
+    for (const c of lineComments) {
       const key = anchorKey(c.side, c.line);
       const list = map.get(key) ?? [];
       list.push(c);
       map.set(key, list);
     }
     return map;
-  }, [comments]);
+  }, [lineComments]);
 
   const widgets = useMemo(() => {
     const result: Record<string, React.ReactNode> = {};
@@ -127,7 +133,27 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
       <header className="file-diff-header">
         <span className="file-path">{path}</span>
         {openCount > 0 && <span className="badge">{openCount}</span>}
+        <span className="spacer" />
+        <button className="file-comment-toggle" onClick={() => setShowFileComposer((v) => !v)}>
+          {showFileComposer ? 'Cancel' : '+ File comment'}
+        </button>
       </header>
+      {(fileComments.length > 0 || showFileComposer) && (
+        <div className="file-comments">
+          <CommentThread
+            comments={fileComments}
+            showComposer={showFileComposer}
+            autoFocus={showFileComposer}
+            placeholder="Comment on this file…"
+            onAdd={(body) => {
+              onAddFile(path, body);
+              setShowFileComposer(false);
+            }}
+            onResolve={onResolve}
+            onDelete={onDelete}
+          />
+        </div>
+      )}
       <Diff
         viewType={viewType}
         diffType={file.type}

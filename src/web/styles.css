@@ -466,6 +466,17 @@ main {
   font-feature-settings: 'liga' 0;
 }
 
+.file-comment-toggle {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.file-comments {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
 /* ───────────────────────── Diff (react-diff-view) ─────────────────────────
    The diff surface is themed entirely by [data-code-theme] (code-themes.css),
    so it reads as a real editor independent of the app chrome. */

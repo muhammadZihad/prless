@@ -49,6 +49,13 @@ describe('CommentStore', () => {
     expect(await store.remove(created.id)).toBe(false);
   });
 
+  it('creates a file-scoped comment without a line anchor', async () => {
+    const c = await store.add({ file: 'a.ts', body: 'split this module', scope: 'file' });
+    expect(c.scope).toBe('file');
+    expect(c.line).toBe(0);
+    expect(c.snippet).toBe('');
+  });
+
   it('persists durable anchor context', async () => {
     const created = await store.add({
       file: 'a.ts',
