@@ -367,7 +367,10 @@ main {
   font-feature-settings: 'liga' 0;
 }
 
-.tag {
+/* File-type badge. NOT named `.tag` — that collides with Prism's `token tag`
+   class and would style every HTML tag in a diff as a badge. Likewise avoid
+   other bare Prism token names (comment, string, keyword, …) for app classes. */
+.ftype {
   display: inline-flex;
   width: 18px;
   height: 18px;
@@ -381,17 +384,17 @@ main {
   flex-shrink: 0;
 }
 
-.tag-add {
+.ftype-add {
   background: var(--add);
 }
-.tag-delete {
+.ftype-delete {
   background: var(--del);
 }
-.tag-modify {
+.ftype-modify {
   background: var(--open);
 }
-.tag-rename,
-.tag-copy {
+.ftype-rename,
+.ftype-copy {
   background: var(--accent);
 }
 
@@ -480,7 +483,9 @@ main {
   font-family: var(--font-ui);
 }
 
-.comment {
+/* Review comment card. NOT named `.comment` — that collides with Prism's
+   `token comment` class and would box every code comment in a diff. */
+.review-comment {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -488,7 +493,7 @@ main {
   box-shadow: var(--shadow-sm);
 }
 
-.comment.resolved {
+.review-comment.resolved {
   opacity: 0.62;
 }
 

@@ -22,7 +22,7 @@ export function FileList({ files, comments }: Props) {
           return (
             <li key={path}>
               <a href={`#file-${path}`} title={path}>
-                <span className={`tag tag-${file.type}`}>{file.type[0].toUpperCase()}</span>
+                <span className={`ftype ftype-${file.type}`}>{file.type[0].toUpperCase()}</span>
                 <span className="file-list-path">{path}</span>
                 {count > 0 && <span className="badge">{count}</span>}
               </a>

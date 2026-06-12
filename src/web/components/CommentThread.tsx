@@ -22,7 +22,7 @@ export function CommentThread({ comments, onAdd, onResolve, onDelete, autoFocus 
   return (
     <div className="thread">
       {comments.map((c) => (
-        <div key={c.id} className={`comment ${c.status === 'resolved' ? 'resolved' : ''}`}>
+        <div key={c.id} className={`review-comment ${c.status === 'resolved' ? 'resolved' : ''}`}>
           <div className="comment-body">{c.body}</div>
           <div className="comment-actions">
             <span className={`status-chip ${c.status}`}>{c.status}</span>
