@@ -10,15 +10,27 @@ Line numbers refer to the indicated side of the diff ("new" = current file conte
 "old" = the version before the change).
 `;
 
+/** A markdown note listing untracked files left out of the review, or '' if none. */
+function untrackedNote(untracked: string[]): string {
+  if (untracked.length === 0) return '';
+  const list = untracked.map((f) => `> - \`${f}\``).join('\n');
+  return (
+    `\n> **Note:** ${untracked.length} untracked ` +
+    `${untracked.length === 1 ? 'file was' : 'files were'} not included in this review ` +
+    `and may also need attention:\n${list}\n`
+  );
+}
+
 /**
  * Render open comments into a deterministic, agent-friendly markdown document,
  * grouped by file and ordered by line. Pure function for easy testing.
  */
-export function renderReviewMarkdown(comments: Comment[]): string {
+export function renderReviewMarkdown(comments: Comment[], untracked: string[] = []): string {
   const open = comments.filter((c) => c.status === 'open');
+  const note = untrackedNote(untracked);
 
   if (open.length === 0) {
-    return `${HEADER}\n_No open comments._\n`;
+    return `${HEADER}${note}\n_No open comments._\n`;
   }
 
   const byFile = new Map<string, Comment[]>();
@@ -45,16 +57,17 @@ export function renderReviewMarkdown(comments: Comment[]): string {
     sections.push(`## ${file}\n\n${items.join('\n\n')}`);
   }
 
-  return `${HEADER}\n${sections.join('\n\n')}\n`;
+  return `${HEADER}${note}\n${sections.join('\n\n')}\n`;
 }
 
 export async function exportReview(
   repoRoot: string,
   comments: Comment[],
+  untracked: string[] = [],
 ): Promise<{ path: string; count: number; content: string }> {
   const dir = path.join(repoRoot, '.prless');
   const file = path.join(dir, 'review.md');
-  const content = renderReviewMarkdown(comments);
+  const content = renderReviewMarkdown(comments, untracked);
   await mkdir(dir, { recursive: true });
   await writeFile(file, content, 'utf8');
   return { path: file, count: comments.filter((c) => c.status === 'open').length, content };

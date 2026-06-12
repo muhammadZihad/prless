@@ -17,6 +17,7 @@ export function App() {
   const [base, setBase] = useState('');
   const [head, setHead] = useState('');
   const [raw, setRaw] = useState('');
+  const [untracked, setUntracked] = useState<string[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [viewType, setViewType] = useState<'unified' | 'split'>('split');
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -42,14 +43,17 @@ export function App() {
     setError('');
     if (mode === 'compare' && (!base || !head)) {
       setRaw('');
+      setUntracked([]);
       return;
     }
     try {
       const res = await api.getDiff(mode, base, head);
       setRaw(res.raw);
+      setUntracked(res.untracked ?? []);
     } catch (e) {
       setError(String(e));
       setRaw('');
+      setUntracked([]);
     }
   }, [mode, base, head]);
 
@@ -188,6 +192,14 @@ export function App() {
       </header>
 
       {error && <div className="banner error">{error}</div>}
+
+      {untracked.length > 0 && (
+        <div className="banner warning">
+          {untracked.length} untracked {untracked.length === 1 ? 'file is' : 'files are'} not
+          included in this review. Run <code>git add -N &lt;file&gt;</code> to include{' '}
+          {untracked.length === 1 ? 'it' : 'them'}.
+        </div>
+      )}
 
       <div className="layout">
         <aside>

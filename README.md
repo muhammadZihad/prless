@@ -82,6 +82,7 @@ prless open ~/projects/my-app       # review a repo by path
 prless open . --port 4200           # serve on a custom port (default 4100)
 prless open . --no-open             # don't launch a browser automatically
 prless help                         # show usage
+prless --version                    # show the installed version
 ```
 
 | Option | Description |
@@ -105,6 +106,16 @@ prless help                         # show usage
 - The handoff is a plain file plus a clipboard copy, so it works with any agent. No MCP,
   no API keys.
 
+## Local-only & privacy
+
+PRless runs entirely on your machine. It does not send your code, diffs, or comments to
+any external server, and it makes no network calls of its own.
+
+- The server binds to `127.0.0.1` only — it is not reachable from your network.
+- Everything is stored under `.prless/` in your repo: `comments.json` (your comments) and
+  `review.md` (the exported handoff).
+- The only thing that leaves PRless is what *you* paste into your AI agent.
+
 ## Configuration
 
 - **App theme** — light or dark, defaults to your OS setting and is remembered per browser.
@@ -121,7 +132,7 @@ cd prless
 npm install        # builds automatically via the prepare script
 
 npm run dev        # Vite UI on :5174 (proxying /api) + API on :4100 with reload
-npm test           # vitest: git, comments, export
+npm test           # vitest: cli, git, comments, export, schemas, e2e
 npm run typecheck
 npm run build      # bundle the web app and compile the server into dist/
 ```

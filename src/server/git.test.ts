@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { assertGitRepo, createGit, getDiff, getRefs } from './git.js';
+import { assertGitRepo, createGit, getDiff, getRefs, getUntrackedFiles } from './git.js';
 
 describe('git layer', () => {
   let dir: string;
@@ -38,5 +38,23 @@ describe('git layer', () => {
     expect(res.raw).toContain('a.ts');
     expect(res.raw).toContain('-const a = 1;');
     expect(res.raw).toContain('+const a = 2;');
+  });
+
+  it('lists untracked files (excluding gitignored)', async () => {
+    await writeFile(path.join(dir, 'new.ts'), 'export const n = 1;\n');
+    await writeFile(path.join(dir, '.gitignore'), 'ignored.ts\n');
+    await writeFile(path.join(dir, 'ignored.ts'), 'secret\n');
+    const untracked = await getUntrackedFiles(createGit(dir));
+    expect(untracked).toContain('new.ts');
+    expect(untracked).not.toContain('ignored.ts');
+  });
+
+  it('reports untracked files in a working-tree diff but not in compare mode', async () => {
+    await writeFile(path.join(dir, 'new.ts'), 'export const n = 1;\n');
+    const working = await getDiff(createGit(dir), 'working');
+    expect(working.untracked).toContain('new.ts');
+
+    const staged = await getDiff(createGit(dir), 'staged');
+    expect(staged.untracked).toEqual([]);
   });
 });

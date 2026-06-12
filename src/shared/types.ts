@@ -14,6 +14,15 @@ export interface Comment {
   updatedAt: string; // ISO timestamp
 }
 
+/** Current on-disk schema version for .prless/comments.json. */
+export const COMMENTS_SCHEMA_VERSION = 1;
+
+/** Versioned envelope persisted to .prless/comments.json. */
+export interface CommentsFile {
+  version: number;
+  comments: Comment[];
+}
+
 export type NewComment = Pick<Comment, 'file' | 'line' | 'side' | 'body'> & {
   snippet?: string;
 };
@@ -38,6 +47,7 @@ export interface DiffResponse {
   base?: string;
   head?: string;
   raw: string; // unified diff text
+  untracked: string[]; // untracked files not included in the diff (working mode)
 }
 
 export interface ExportResponse {

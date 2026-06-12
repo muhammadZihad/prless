@@ -1,7 +1,7 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommentStore } from './comments.js';
 
 describe('CommentStore', () => {
@@ -47,5 +47,53 @@ describe('CommentStore', () => {
     expect(await store.remove(created.id)).toBe(true);
     expect(await store.list()).toEqual([]);
     expect(await store.remove(created.id)).toBe(false);
+  });
+
+  it('persists a versioned envelope on disk', async () => {
+    await store.add({ file: 'a.ts', line: 1, side: 'new', body: 'x' });
+    const onDisk = JSON.parse(await readFile(path.join(dir, '.prless', 'comments.json'), 'utf8'));
+    expect(onDisk.version).toBe(1);
+    expect(Array.isArray(onDisk.comments)).toBe(true);
+    expect(onDisk.comments).toHaveLength(1);
+  });
+
+  it('reads a legacy bare-array file and upgrades it on next save', async () => {
+    const file = path.join(dir, '.prless', 'comments.json');
+    await mkdir(path.dirname(file), { recursive: true });
+    const legacy = [
+      {
+        id: 'legacy-1',
+        file: 'a.ts',
+        line: 2,
+        side: 'new',
+        snippet: '',
+        body: 'old',
+        status: 'open',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+    await writeFile(file, JSON.stringify(legacy), 'utf8');
+
+    expect(await store.list()).toHaveLength(1);
+
+    // A write upgrades the file to the versioned envelope.
+    await store.add({ file: 'b.ts', line: 1, side: 'new', body: 'new' });
+    const onDisk = JSON.parse(await readFile(file, 'utf8'));
+    expect(onDisk.version).toBe(1);
+    expect(onDisk.comments).toHaveLength(2);
+  });
+
+  it('backs up a corrupted file and starts empty', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const file = path.join(dir, '.prless', 'comments.json');
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, '{ this is not valid json', 'utf8');
+
+    expect(await store.list()).toEqual([]);
+
+    const entries = await readdir(path.join(dir, '.prless'));
+    expect(entries.some((f) => f.startsWith('comments.corrupted.'))).toBe(true);
+    errSpy.mockRestore();
   });
 });

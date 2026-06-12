@@ -1,13 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { SimpleGit } from 'simple-git';
-import type {
-  CommentPatch,
-  DiffMode,
-  NewComment,
-} from '../shared/types.js';
 import { CommentStore } from './comments.js';
 import { exportReview } from './export.js';
-import { getDiff, getRefs, GitError } from './git.js';
+import { getDiff, getRefs, getUntrackedFiles, GitError } from './git.js';
+import {
+  CreateCommentSchema,
+  DiffQuerySchema,
+  PatchCommentSchema,
+  formatZodError,
+} from './schemas.js';
 
 export interface ApiContext {
   repoRoot: string;
@@ -24,10 +25,13 @@ export async function registerApiRoutes(
   });
 
   app.get('/api/diff', async (request, reply) => {
-    const q = request.query as Record<string, string | undefined>;
-    const mode = (q.mode ?? 'working') as DiffMode;
+    const parsed = DiffQuerySchema.safeParse(request.query ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: formatZodError(parsed.error) });
+    }
+    const { mode, base, head } = parsed.data;
     try {
-      return await getDiff(ctx.git, mode, q.base, q.head);
+      return await getDiff(ctx.git, mode, base, head);
     } catch (err) {
       if (err instanceof GitError) {
         return reply.code(400).send({ error: err.message });
@@ -41,24 +45,21 @@ export async function registerApiRoutes(
   });
 
   app.post('/api/comments', async (request, reply) => {
-    const body = request.body as Partial<NewComment>;
-    if (!body || !body.file || typeof body.line !== 'number' || !body.side || !body.body) {
-      return reply.code(400).send({ error: 'file, line, side and body are required' });
+    const parsed = CreateCommentSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: formatZodError(parsed.error) });
     }
-    const created = await ctx.store.add({
-      file: body.file,
-      line: body.line,
-      side: body.side,
-      body: body.body,
-      snippet: body.snippet,
-    });
+    const created = await ctx.store.add(parsed.data);
     return reply.code(201).send(created);
   });
 
   app.patch('/api/comments/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const patch = request.body as CommentPatch;
-    const updated = await ctx.store.patch(id, patch);
+    const parsed = PatchCommentSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: formatZodError(parsed.error) });
+    }
+    const updated = await ctx.store.patch(id, parsed.data);
     if (!updated) {
       return reply.code(404).send({ error: 'comment not found' });
     }
@@ -76,7 +77,8 @@ export async function registerApiRoutes(
 
   app.post('/api/export', async () => {
     const comments = await ctx.store.list();
-    const result = await exportReview(ctx.repoRoot, comments);
+    const untracked = await getUntrackedFiles(ctx.git);
+    const result = await exportReview(ctx.repoRoot, comments, untracked);
     return result;
   });
 }

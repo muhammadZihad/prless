@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Comment, CommentPatch, NewComment } from '../shared/types.js';
+import {
+  COMMENTS_SCHEMA_VERSION,
+  type Comment,
+  type CommentPatch,
+  type CommentsFile,
+  type NewComment,
+} from '../shared/types.js';
 
 export class CommentStore {
   private readonly dir: string;
@@ -17,15 +23,37 @@ export class CommentStore {
   }
 
   async list(): Promise<Comment[]> {
+    let raw: string;
     try {
-      const raw = await readFile(this.file, 'utf8');
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? (parsed as Comment[]) : [];
+      raw = await readFile(this.file, 'utf8');
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
         return [];
       }
       throw err;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      // Legacy format: a bare array of comments (pre-v1). Upgraded on next save.
+      if (Array.isArray(parsed)) {
+        return parsed as Comment[];
+      }
+      // Versioned envelope: { version, comments }.
+      if (
+        parsed !== null &&
+        typeof parsed === 'object' &&
+        Array.isArray((parsed as CommentsFile).comments)
+      ) {
+        return (parsed as CommentsFile).comments;
+      }
+      // Parsed, but an unexpected shape — treat as corrupt.
+      await this.backupCorrupted();
+      return [];
+    } catch {
+      // Invalid JSON.
+      await this.backupCorrupted();
+      return [];
     }
   }
 
@@ -75,6 +103,25 @@ export class CommentStore {
 
   private async save(comments: Comment[]): Promise<void> {
     await mkdir(this.dir, { recursive: true });
-    await writeFile(this.file, JSON.stringify(comments, null, 2) + '\n', 'utf8');
+    const payload: CommentsFile = { version: COMMENTS_SCHEMA_VERSION, comments };
+    // Write to a temp file then rename, so a crash mid-write can't corrupt the
+    // existing comments.json (rename is atomic on the same filesystem).
+    const tmp = `${this.file}.tmp`;
+    await writeFile(tmp, JSON.stringify(payload, null, 2) + '\n', 'utf8');
+    await rename(tmp, this.file);
+  }
+
+  /** Move an unreadable comments.json aside so the user can recover it. */
+  private async backupCorrupted(): Promise<void> {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backup = path.join(this.dir, `comments.corrupted.${stamp}.json`);
+    try {
+      await rename(this.file, backup);
+      console.error(
+        `prless: ${this.file} contained invalid data. A backup was created at ${backup}. Starting with an empty comment list.`,
+      );
+    } catch {
+      // Best effort — recovery should never block the review.
+    }
   }
 }
