@@ -1,88 +1,146 @@
-# PRless
+<p align="center">
+  <img src="src/web/public/icon.svg" width="84" height="84" alt="PRless logo" />
+</p>
 
-A local, GitHub-style code review tool with an agent-agnostic AI handoff. Review a local
-git diff in the browser, leave inline comments anchored to specific lines, then export the
-comments to a file that any CLI coding agent (Claude Code, Codex, …) can read and act on.
+<h1 align="center">PRless</h1>
 
-## Install
+<p align="center">
+  <strong>PR-style code review without the pull request.</strong><br/>
+  Review a local git diff in your browser, comment inline, and hand the notes to an AI agent.
+</p>
 
-Requires **Node.js 18+**. One command on every platform — macOS, Linux, and Windows:
+<p align="center">
+  <a href="https://www.npmjs.com/package/@muhammad_zihad/prless"><img src="https://img.shields.io/npm/v/@muhammad_zihad/prless.svg?color=6d54e0&label=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@muhammad_zihad/prless"><img src="https://img.shields.io/npm/dm/@muhammad_zihad/prless.svg?color=6d54e0" alt="npm downloads" /></a>
+  <img src="https://img.shields.io/node/v/@muhammad_zihad/prless.svg?color=6d54e0" alt="node version" />
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/@muhammad_zihad/prless.svg?color=6d54e0" alt="license" /></a>
+</p>
+
+<!-- TODO: add a screenshot or short GIF of the diff view + Export for AI here -->
+
+---
+
+## Why PRless?
+
+When you ask an AI agent to fix something, your feedback is usually disconnected from the
+code: you describe a change in prose, or push a branch and open a PR just to review it.
+
+PRless gives AI code review the thing human review already has: **comments pinned to exact
+lines**. You review a diff like a GitHub PR, leave inline comments, then export them as a
+clipboard-ready prompt for Claude Code, Codex, or any CLI agent. No remote, no PR, no API
+keys. The whole loop stays on your machine.
+
+## Features
+
+- 🧩 **GitHub-style diff view** for any local git repo (working tree, staged, or branch compare).
+- 💬 **Inline comments** anchored to specific lines, with resolve / reopen / delete.
+- 🤖 **One-click AI handoff** — copies agent-ready instructions to your clipboard and writes `.prless/review.md`.
+- 🎨 **Light & dark themes** plus selectable syntax themes (GitHub, Dracula, Nord, One Dark, Monokai, Solarized).
+- 🪶 **Token-savvy** — resolved comments stay on disk but are excluded from the AI export.
+- 🖥️ **Cross-platform** — macOS, Linux, and Windows, with bundled offline fonts.
+
+## Installation
+
+Requires **Node.js 18+**.
 
 ```bash
 npm install -g @muhammad_zihad/prless
 ```
 
-That puts a `prless` command on your PATH (on Windows, npm generates the `.cmd`/PowerShell
-shims automatically). Prefer not to install globally? Run it on demand with `npx`:
+This adds a `prless` command to your `PATH` (on Windows, npm generates the `.cmd` /
+PowerShell shims automatically). Prefer not to install globally? Run it on demand:
 
 ```bash
 npx @muhammad_zihad/prless open .
 ```
 
-### From source
+## Quick start
 
 ```bash
-git clone https://github.com/muhammadZihad/prless.git && cd prless
-npm install        # builds automatically via the prepare script
-npm link           # makes `prless` available globally
+cd your-project
+prless open .
 ```
 
-## Use
+1. Your browser opens with the diff of your uncommitted changes.
+2. Click a line's gutter to leave a comment, just like a GitHub PR.
+3. Hit **Export for AI** — the instructions are copied to your clipboard. Paste them into
+   your agent:
 
 ```bash
-prless open .                  # review the git repo in the current directory
-prless open ~/projects/my-app  # review a repo by path
-prless open ./my-app --port 4200
-prless help                    # show usage
-```
-
-Works on macOS, Linux, and Windows. This starts a local server and opens the UI in your
-browser. You can:
-
-- **Pick a diff source** — working tree vs HEAD, staged vs HEAD, or compare two branches.
-- **Comment inline** — click a line's gutter to leave a comment (⌘/Ctrl+Enter to submit).
-- **Resolve / delete** comments; toggle split / unified view.
-- **Switch the app theme** — light or dark (defaults to your OS setting, remembered per browser).
-- **Choose a syntax theme** — Auto, GitHub Light/Dark, One Dark, Dracula, Nord, Monokai,
-  Solarized Light. The diff renders as a self-contained editor surface, so any code theme
-  looks right regardless of the app theme.
-- **Export for AI** — writes open comments to `.prless/review.md`.
-
-Typography uses Geist (UI) and JetBrains Mono (code), bundled locally so it works offline.
-
-Comments persist in `.prless/comments.json` in the repo (gitignore the `.prless/` folder).
-
-## Hand off to an agent
-
-After exporting, run your agent in the repo and point it at the file:
-
-```bash
-claude   # then: "address the comments in .prless/review.md"
+claude            # then paste, or: "address the comments in .prless/review.md"
 # or
 codex "address the comments in .prless/review.md"
 ```
 
-`review.md` lists each open comment grouped by file, with the target line, side, and the
-requested change — no API keys or MCP required.
+The agent reads each comment, makes the change, and you re-review. That is the whole loop.
 
-## Develop
+## Commands
 
 ```bash
-npm run dev        # Vite UI on :5174 (proxying /api) + API on :4100 with reload
-npm test           # vitest (git, comments, export)
-npm run typecheck
+prless open .                       # review the repo in the current directory
+prless open ~/projects/my-app       # review a repo by path
+prless open . --port 4200           # serve on a custom port (default 4100)
+prless open . --no-open             # don't launch a browser automatically
+prless help                         # show usage
 ```
 
-## Layout
+| Option | Description |
+| --- | --- |
+| `--port <n>` | Port to serve on (default `4100`, or `$PRLESS_PORT`). |
+| `--no-open` | Skip auto-opening the browser. |
+
+## How it works
+
+```
+ ┌──────────┐   review    ┌───────────┐   export    ┌─────────────────┐   apply   ┌───────────┐
+ │ git diff │ ──────────▶ │  PRless   │ ──────────▶ │ .prless/review.md │ ───────▶ │  AI agent │
+ └──────────┘   inline    │  (browser)│  + clipboard │  (open comments)  │          └───────────┘
+                comments  └───────────┘              └─────────────────┘
+```
+
+- Comments persist in `.prless/comments.json` in your repo. Add `.prless/` to `.gitignore`.
+- `.prless/review.md` groups every **open** comment by file, with the target line and the
+  requested change. Resolved comments are kept in the JSON but left out of the export, so
+  the agent never spends tokens on them.
+- The handoff is a plain file plus a clipboard copy, so it works with any agent. No MCP,
+  no API keys.
+
+## Configuration
+
+- **App theme** — light or dark, defaults to your OS setting and is remembered per browser.
+- **Syntax theme** — Auto, GitHub Light/Dark, One Dark, Dracula, Nord, Monokai, or
+  Solarized Light. The diff renders as a self-contained editor surface, so any code theme
+  looks right regardless of the app theme.
+- **View** — split or unified.
+
+## Development
+
+```bash
+git clone https://github.com/muhammadZihad/prless.git
+cd prless
+npm install        # builds automatically via the prepare script
+
+npm run dev        # Vite UI on :5174 (proxying /api) + API on :4100 with reload
+npm test           # vitest: git, comments, export
+npm run typecheck
+npm run build      # bundle the web app and compile the server into dist/
+```
+
+### Project structure
 
 ```
 src/
-  shared/types.ts        # types shared by server + web
-  server/                # Fastify API + CLI (git diff, comment store, review.md export)
-  web/                   # React + Vite UI (react-diff-view)
+  shared/   # types shared by the server and web app
+  server/   # Fastify API + CLI: git diff, comment store, review.md export
+  web/      # React + Vite UI (react-diff-view, syntax highlighting, theming)
 ```
 
 ## Scope
 
-Local, single-user. No GitHub PR ingestion, no auth/DB, no MCP — handoff is the exported
-file. These are deliberate non-goals and can be layered on later.
+PRless is intentionally local and single-user: no GitHub PR ingestion, no accounts, no
+database, no MCP. The handoff is the exported file. These are deliberate non-goals that
+could be layered on later.
+
+## License
+
+[MIT](./LICENSE) © Muhammad AR Zihad
