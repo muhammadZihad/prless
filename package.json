@@ -1,0 +1,69 @@
+{
+  "name": "prless",
+  "version": "0.1.0",
+  "description": "Local GitHub-style code review tool with agent-agnostic AI handoff",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/muhammadZihad/prless#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/muhammadZihad/prless.git"
+  },
+  "bugs": {
+    "url": "https://github.com/muhammadZihad/prless/issues"
+  },
+  "keywords": [
+    "code-review",
+    "diff",
+    "git",
+    "cli",
+    "ai",
+    "claude",
+    "codex"
+  ],
+  "bin": {
+    "prless": "dist/server/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "tsx watch src/server/cli.ts open . --dev",
+    "dev:web": "vite",
+    "build": "npm run build:web && npm run build:server",
+    "build:web": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "start": "node dist/server/cli.js",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@fastify/static": "^7.0.4",
+    "fastify": "^4.28.1",
+    "open": "^10.1.0",
+    "simple-git": "^3.27.0"
+  },
+  "devDependencies": {
+    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "concurrently": "^9.0.1",
+    "react": "^18.3.1",
+    "react-diff-view": "^3.2.1",
+    "react-dom": "^18.3.1",
+    "refractor": "^4.8.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.2"
+  }
+}

@@ -1,0 +1,249 @@
+/* ─────────────────── Code (syntax) themes ───────────────────
+   Selected independently of the app theme via [data-code-theme] on <html>.
+   Each theme makes the diff a self-contained editor surface: it sets its own
+   background, foreground, diff tints, and Prism token colors. The app chrome
+   (header, sidebar, comments) keeps following the app light/dark theme. */
+
+/* Wire react-diff-view's CSS variables + the diff surface to the active code theme. */
+[data-code-theme] {
+  --diff-background-color: var(--code-bg);
+  --diff-text-color: var(--code-fg);
+  --diff-selection-background-color: var(--code-sel);
+  --diff-gutter-insert-background-color: var(--code-ins-gutter);
+  --diff-gutter-delete-background-color: var(--code-del-gutter);
+  --diff-code-insert-background-color: var(--code-ins-bg);
+  --diff-code-delete-background-color: var(--code-del-bg);
+  --diff-gutter-selected-background-color: var(--code-sel);
+  --diff-code-selected-background-color: var(--code-sel);
+}
+
+.file-diff .diff {
+  background: var(--code-bg);
+}
+
+/* Prism token roles → theme variables (shared across all themes). */
+.token.comment,
+.token.prolog,
+.token.cdata,
+.token.doctype {
+  color: var(--tk-comment);
+  font-style: italic;
+}
+.token.punctuation {
+  color: var(--tk-punct);
+}
+.token.keyword,
+.token.atrule,
+.token.rule,
+.token.important {
+  color: var(--tk-keyword);
+}
+.token.number,
+.token.boolean,
+.token.constant,
+.token.symbol,
+.token.unit {
+  color: var(--tk-number);
+}
+.token.string,
+.token.char,
+.token.attr-value,
+.token.url,
+.token.inserted {
+  color: var(--tk-string);
+}
+.token.function,
+.token.function-name {
+  color: var(--tk-function);
+}
+.token.class-name,
+.token.maybe-class-name,
+.token.builtin,
+.token.namespace {
+  color: var(--tk-class);
+}
+.token.variable,
+.token.property,
+.token.attr-name,
+.token.parameter {
+  color: var(--tk-variable);
+}
+.token.operator,
+.token.entity {
+  color: var(--tk-operator);
+}
+.token.tag,
+.token.selector {
+  color: var(--tk-tag);
+}
+.token.regex,
+.token.deleted {
+  color: var(--tk-regex);
+}
+.token.bold {
+  font-weight: 600;
+}
+.token.italic {
+  font-style: italic;
+}
+
+/* ── GitHub Light ── */
+[data-code-theme='github-light'] {
+  --code-bg: #fcfcfd;
+  --code-fg: #1f2328;
+  --code-gutter-fg: #8c959f;
+  --code-sel: #dbe9ff;
+  --code-ins-bg: #e6ffec;
+  --code-del-bg: #ffebe9;
+  --code-ins-gutter: #c6f6d0;
+  --code-del-gutter: #ffd7d5;
+  --tk-comment: #6e7781;
+  --tk-punct: #24292f;
+  --tk-keyword: #cf222e;
+  --tk-number: #0550ae;
+  --tk-string: #0a3069;
+  --tk-function: #8250df;
+  --tk-class: #953800;
+  --tk-variable: #953800;
+  --tk-operator: #cf222e;
+  --tk-tag: #116329;
+  --tk-regex: #116329;
+}
+
+/* ── GitHub Dark ── */
+[data-code-theme='github-dark'] {
+  --code-bg: #0d1117;
+  --code-fg: #c9d1d9;
+  --code-gutter-fg: #6e7681;
+  --code-sel: #214283;
+  --code-ins-bg: #12261c;
+  --code-del-bg: #25171b;
+  --code-ins-gutter: #1b4524;
+  --code-del-gutter: #5d2025;
+  --tk-comment: #8b949e;
+  --tk-punct: #c9d1d9;
+  --tk-keyword: #ff7b72;
+  --tk-number: #79c0ff;
+  --tk-string: #a5d6ff;
+  --tk-function: #d2a8ff;
+  --tk-class: #ffa657;
+  --tk-variable: #ffa657;
+  --tk-operator: #ff7b72;
+  --tk-tag: #7ee787;
+  --tk-regex: #7ee787;
+}
+
+/* ── One Dark ── */
+[data-code-theme='one-dark'] {
+  --code-bg: #282c34;
+  --code-fg: #abb2bf;
+  --code-gutter-fg: #5c6370;
+  --code-sel: #3e4451;
+  --code-ins-bg: #2a3a2f;
+  --code-del-bg: #3a2a30;
+  --code-ins-gutter: #36513e;
+  --code-del-gutter: #51343c;
+  --tk-comment: #5c6370;
+  --tk-punct: #abb2bf;
+  --tk-keyword: #c678dd;
+  --tk-number: #d19a66;
+  --tk-string: #98c379;
+  --tk-function: #61afef;
+  --tk-class: #e5c07b;
+  --tk-variable: #e06c75;
+  --tk-operator: #56b6c2;
+  --tk-tag: #e06c75;
+  --tk-regex: #98c379;
+}
+
+/* ── Dracula ── */
+[data-code-theme='dracula'] {
+  --code-bg: #282a36;
+  --code-fg: #f8f8f2;
+  --code-gutter-fg: #6272a4;
+  --code-sel: #44475a;
+  --code-ins-bg: #233a2c;
+  --code-del-bg: #3d2231;
+  --code-ins-gutter: #2f5339;
+  --code-del-gutter: #5a2d3f;
+  --tk-comment: #6272a4;
+  --tk-punct: #f8f8f2;
+  --tk-keyword: #ff79c6;
+  --tk-number: #bd93f9;
+  --tk-string: #f1fa8c;
+  --tk-function: #50fa7b;
+  --tk-class: #8be9fd;
+  --tk-variable: #f8f8f2;
+  --tk-operator: #ff79c6;
+  --tk-tag: #ff79c6;
+  --tk-regex: #f1fa8c;
+}
+
+/* ── Nord ── */
+[data-code-theme='nord'] {
+  --code-bg: #2e3440;
+  --code-fg: #d8dee9;
+  --code-gutter-fg: #4c566a;
+  --code-sel: #434c5e;
+  --code-ins-bg: #34453a;
+  --code-del-bg: #43353a;
+  --code-ins-gutter: #3f5a45;
+  --code-del-gutter: #5a4046;
+  --tk-comment: #616e88;
+  --tk-punct: #d8dee9;
+  --tk-keyword: #81a1c1;
+  --tk-number: #b48ead;
+  --tk-string: #a3be8c;
+  --tk-function: #88c0d0;
+  --tk-class: #8fbcbb;
+  --tk-variable: #d8dee9;
+  --tk-operator: #81a1c1;
+  --tk-tag: #81a1c1;
+  --tk-regex: #ebcb8b;
+}
+
+/* ── Monokai ── */
+[data-code-theme='monokai'] {
+  --code-bg: #272822;
+  --code-fg: #f8f8f2;
+  --code-gutter-fg: #75715e;
+  --code-sel: #49483e;
+  --code-ins-bg: #2d3327;
+  --code-del-bg: #382528;
+  --code-ins-gutter: #3c4a2f;
+  --code-del-gutter: #55323a;
+  --tk-comment: #88846f;
+  --tk-punct: #f8f8f2;
+  --tk-keyword: #f92672;
+  --tk-number: #ae81ff;
+  --tk-string: #e6db74;
+  --tk-function: #a6e22e;
+  --tk-class: #a6e22e;
+  --tk-variable: #f8f8f2;
+  --tk-operator: #f92672;
+  --tk-tag: #f92672;
+  --tk-regex: #e6db74;
+}
+
+/* ── Solarized Light ── */
+[data-code-theme='solarized-light'] {
+  --code-bg: #fdf6e3;
+  --code-fg: #586e75;
+  --code-gutter-fg: #93a1a1;
+  --code-sel: #eee8d5;
+  --code-ins-bg: #e9efd0;
+  --code-del-bg: #f6e0d8;
+  --code-ins-gutter: #d9e4b0;
+  --code-del-gutter: #f0cfc4;
+  --tk-comment: #93a1a1;
+  --tk-punct: #586e75;
+  --tk-keyword: #859900;
+  --tk-number: #d33682;
+  --tk-string: #2aa198;
+  --tk-function: #268bd2;
+  --tk-class: #b58900;
+  --tk-variable: #268bd2;
+  --tk-operator: #859900;
+  --tk-tag: #268bd2;
+  --tk-regex: #2aa198;
+}
