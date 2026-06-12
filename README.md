@@ -81,6 +81,7 @@ prless open .                       # review the repo in the current directory
 prless open ~/projects/my-app       # review a repo by path
 prless open . --port 4200           # serve on a custom port (default 4100)
 prless open . --no-open             # don't launch a browser automatically
+prless open . -- src app tests      # limit the review to specific paths
 prless help                         # show usage
 prless --version                    # show the installed version
 ```
@@ -89,6 +90,24 @@ prless --version                    # show the installed version
 | --- | --- |
 | `--port <n>` | Port to serve on (default `4100`, or `$PRLESS_PORT`). |
 | `--no-open` | Skip auto-opening the browser. |
+| `-- <paths…>` | Limit the review to the given paths (everything after `--`). |
+
+### Hiding files with `.prlessignore`
+
+Drop a `.prlessignore` file (gitignore syntax) at your repo root to keep generated/noisy
+files out of the review:
+
+```gitignore
+dist/
+build/
+coverage/
+package-lock.json
+*.min.js
+```
+
+Matching files are excluded from the diff and the export. The diff view also has a file
+search box, a **Commented** filter, and a **Hide generated** toggle; generated and very
+large files collapse by default.
 
 ## How it works
 
