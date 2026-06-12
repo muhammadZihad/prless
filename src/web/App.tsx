@@ -2,24 +2,42 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseDiff } from 'react-diff-view';
 import type { Comment, DiffMode, DiffSide, RefsResponse } from '../shared/types';
 import { api } from './api';
-import { filePath, type FileDiff } from './diffUtils';
+import {
+  anchorKey,
+  buildChangeKeyIndex,
+  countChanges,
+  diffStats,
+  filePath,
+  isGeneratedFile,
+  type FileDiff,
+} from './diffUtils';
 import { useTheme } from './theme';
 import { copyToClipboard } from './clipboard';
-import { DiffView } from './components/DiffView';
+import { DiffView, type AddAnchor } from './components/DiffView';
 import { FileList } from './components/FileList';
+import { OrphanedComments } from './components/OrphanedComments';
 import { RefPicker } from './components/RefPicker';
+import { RepoPicker } from './components/RepoPicker';
 import { CodeThemePicker, ThemeToggle } from './components/Controls';
 import { Toast, type ToastState } from './components/Toast';
 
 export function App() {
+  const [repo, setRepo] = useState<{ repoRoot: string; name: string } | null>(null);
+  const [ready, setReady] = useState(false);
+  const [picking, setPicking] = useState(false);
   const [refs, setRefs] = useState<RefsResponse | null>(null);
   const [mode, setMode] = useState<DiffMode>('working');
   const [base, setBase] = useState('');
   const [head, setHead] = useState('');
   const [raw, setRaw] = useState('');
   const [untracked, setUntracked] = useState<string[]>([]);
+  const [ignored, setIgnored] = useState<string[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [viewType, setViewType] = useState<'unified' | 'split'>('split');
+  const [fileQuery, setFileQuery] = useState('');
+  const [commentedOnly, setCommentedOnly] = useState(false);
+  const [hideGenerated, setHideGenerated] = useState(false);
+  const [largeDismissed, setLargeDismissed] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [error, setError] = useState<string>('');
   const [exported, setExported] = useState(false);
@@ -34,28 +52,72 @@ export function App() {
     }
   }, [raw]);
 
+  // On load, ask the server whether a repo is already selected.
   useEffect(() => {
+    api
+      .getRepo()
+      .then((r) => {
+        if (r.repoRoot) setRepo({ repoRoot: r.repoRoot, name: r.name ?? r.repoRoot });
+      })
+      .catch((e) => setError(String(e)))
+      .finally(() => setReady(true));
+  }, []);
+
+  // Reflect the active repo in the browser tab title.
+  useEffect(() => {
+    document.title = repo ? `${repo.name} · PRless` : 'PRless';
+  }, [repo]);
+
+  // Load refs + comments whenever the active repo changes.
+  useEffect(() => {
+    if (!repo) return;
     api.getRefs().then(setRefs).catch((e) => setError(String(e)));
     api.getComments().then(setComments).catch((e) => setError(String(e)));
+  }, [repo]);
+
+  const handlePickRepo = useCallback(async () => {
+    setError('');
+    setPicking(true);
+    try {
+      const r = await api.pickRepo();
+      if (r?.repoRoot) {
+        setRepo({ repoRoot: r.repoRoot, name: r.name ?? r.repoRoot });
+        // Reset view state for the freshly selected repo.
+        setMode('working');
+        setBase('');
+        setHead('');
+      }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setPicking(false);
+    }
   }, []);
 
   const loadDiff = useCallback(async () => {
     setError('');
+    if (!repo) {
+      setRaw('');
+      return;
+    }
     if (mode === 'compare' && (!base || !head)) {
       setRaw('');
       setUntracked([]);
+      setIgnored([]);
       return;
     }
     try {
       const res = await api.getDiff(mode, base, head);
       setRaw(res.raw);
       setUntracked(res.untracked ?? []);
+      setIgnored(res.ignored ?? []);
     } catch (e) {
       setError(String(e));
       setRaw('');
       setUntracked([]);
+      setIgnored([]);
     }
-  }, [mode, base, head]);
+  }, [repo, mode, base, head]);
 
   useEffect(() => {
     loadDiff();
@@ -67,9 +129,18 @@ export function App() {
   }, [comments]);
 
   const handleAdd = useCallback(
-    async (file: string, side: DiffSide, line: number, snippet: string, body: string) => {
+    async (file: string, side: DiffSide, line: number, anchor: AddAnchor, body: string) => {
       try {
-        const created = await api.addComment({ file, side, line, body, snippet });
+        const created = await api.addComment({
+          file,
+          side,
+          line,
+          body,
+          snippet: anchor.snippet,
+          beforeContext: anchor.beforeContext,
+          afterContext: anchor.afterContext,
+          hunkHeader: anchor.hunkHeader,
+        });
         setComments((prev) => [...prev, created]);
       } catch (e) {
         setError(String(e));
@@ -77,6 +148,15 @@ export function App() {
     },
     [],
   );
+
+  const handleAddFile = useCallback(async (file: string, body: string) => {
+    try {
+      const created = await api.addComment({ file, body, scope: 'file' });
+      setComments((prev) => [...prev, created]);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
 
   const handleResolve = useCallback(async (id: string, resolved: boolean) => {
     try {
@@ -132,7 +212,60 @@ export function App() {
     [comments],
   );
 
+  // Map each diffed file to the set of anchors present in the current diff.
+  const anchoredByFile = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const f of files) {
+      const keys = new Set<string>(buildChangeKeyIndex(f).keys());
+      map.set(filePath(f), keys);
+    }
+    return map;
+  }, [files]);
+
+  // Open comments whose anchor no longer exists anywhere in the current diff.
+  // Only meaningful once a diff has loaded, so don't flag when there are no files.
+  const orphanComments = useMemo(() => {
+    if (files.length === 0) return [];
+    return comments.filter(
+      (c) =>
+        c.status === 'open' &&
+        c.scope !== 'file' && // file comments aren't line-anchored, so never orphaned
+        !anchoredByFile.get(c.file)?.has(anchorKey(c.side, c.line)),
+    );
+  }, [comments, anchoredByFile, files]);
+
   const openCount = comments.filter((c) => c.status === 'open').length;
+
+  // Files that carry at least one comment (any status).
+  const commentedFiles = useMemo(() => new Set(comments.map((c) => c.file)), [comments]);
+
+  // Apply the search box + "commented only" + "hide generated" filters.
+  const visibleFiles = useMemo(() => {
+    const q = fileQuery.trim().toLowerCase();
+    return files.filter((f) => {
+      const path = filePath(f);
+      if (q && !path.toLowerCase().includes(q)) return false;
+      if (hideGenerated && isGeneratedFile(path)) return false;
+      if (commentedOnly && !commentedFiles.has(path)) return false;
+      return true;
+    });
+  }, [files, fileQuery, hideGenerated, commentedOnly, commentedFiles]);
+
+  // Warn when the whole diff is large enough to be sluggish.
+  const stats = useMemo(() => diffStats(files), [files]);
+  const isLargeDiff = stats.changes > 10_000 || stats.files > 75;
+
+  if (!ready) {
+    return (
+      <div className="app">
+        <div className="empty">Starting…</div>
+      </div>
+    );
+  }
+
+  if (!repo) {
+    return <RepoPicker onPick={handlePickRepo} busy={picking} error={error} />;
+  }
 
   return (
     <div className="app">
@@ -147,6 +280,14 @@ export function App() {
           </span>
           <h1>PRless</h1>
         </div>
+        <button
+          className="repo-chip"
+          onClick={handlePickRepo}
+          disabled={picking}
+          title={`${repo.repoRoot} — click to switch project`}
+        >
+          {repo.name}
+        </button>
         <div className="divider" />
         <RefPicker
           refs={refs}
@@ -159,6 +300,28 @@ export function App() {
             setHead(h);
           }}
         />
+        <input
+          className="file-search"
+          type="search"
+          value={fileQuery}
+          placeholder="Search files…"
+          aria-label="Search files"
+          onChange={(e) => setFileQuery(e.target.value)}
+        />
+        <button
+          className={`toggle${commentedOnly ? ' active' : ''}`}
+          onClick={() => setCommentedOnly((v) => !v)}
+          title="Show only files with comments"
+        >
+          Commented
+        </button>
+        <button
+          className={`toggle${hideGenerated ? ' active' : ''}`}
+          onClick={() => setHideGenerated((v) => !v)}
+          title="Hide generated files (lockfiles, dist/, *.min.js, …)"
+        >
+          Hide generated
+        </button>
         <div className="spacer" />
         <div className="toolset">
           <CodeThemePicker value={codeTheme} onChange={setCodeTheme} />
@@ -201,25 +364,61 @@ export function App() {
         </div>
       )}
 
+      {ignored.length > 0 && (
+        <div className="banner info">
+          {ignored.length} {ignored.length === 1 ? 'file' : 'files'} hidden by{' '}
+          <code>.prlessignore</code>.
+        </div>
+      )}
+
+      {isLargeDiff && !largeDismissed && (
+        <div className="banner warning">
+          This diff has {stats.changes.toLocaleString()} changed lines across {stats.files} files.
+          Consider <code>.prlessignore</code>, path filters (<code>prless open . -- src</code>), or
+          the “Commented” filter to narrow it down.
+          <span className="spacer" />
+          <button onClick={() => setLargeDismissed(true)}>Dismiss</button>
+        </div>
+      )}
+
       <div className="layout">
         <aside>
-          <FileList files={files} comments={comments} />
+          <FileList files={visibleFiles} comments={comments} />
         </aside>
         <main>
-          {files.length === 0 ? (
-            <div className="empty">No changes to review for this selection.</div>
+          <OrphanedComments
+            comments={orphanComments}
+            onResolve={handleResolve}
+            onDelete={handleDelete}
+          />
+          {visibleFiles.length === 0 ? (
+            <div className="empty">
+              {files.length === 0
+                ? 'No changes to review for this selection.'
+                : 'No files match the current filters.'}
+            </div>
           ) : (
-            files.map((file) => (
-              <DiffView
-                key={filePath(file)}
-                file={file}
-                viewType={viewType}
-                comments={commentsForFile(filePath(file))}
-                onAdd={handleAdd}
-                onResolve={handleResolve}
-                onDelete={handleDelete}
-              />
-            ))
+            visibleFiles.map((file) => {
+              const path = filePath(file);
+              const fileComments = commentsForFile(path);
+              const generated = isGeneratedFile(path);
+              const large = countChanges(file) > 500;
+              const collapsedByDefault = (generated || large) && fileComments.length === 0;
+              return (
+                <DiffView
+                  key={path}
+                  file={file}
+                  viewType={viewType}
+                  comments={fileComments}
+                  collapsedByDefault={collapsedByDefault}
+                  collapseReason={generated ? 'Generated file' : large ? 'Large file' : undefined}
+                  onAdd={handleAdd}
+                  onAddFile={handleAddFile}
+                  onResolve={handleResolve}
+                  onDelete={handleDelete}
+                />
+              );
+            })
           )}
         </main>
       </div>

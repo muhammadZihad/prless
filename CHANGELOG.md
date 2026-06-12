@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Run bare `prless` to start with no repository selected and pick a folder from the native OS
+  dialog in the browser; `prless open` with no path now defaults to the current directory.
+- Durable comment anchors: comments store surrounding context + the hunk header.
+- Comment drift detection — a "code changed" badge when an anchor line no longer matches.
+- Orphaned comments: a dedicated UI section and an `## Orphaned Comments` block in the export
+  for comments whose anchor is gone.
+- File-level comments (a "+ File comment" button per file).
+- `.prlessignore` support (gitignore syntax) to hide generated/noisy files.
+- Path filters: `prless open . -- <paths>` scopes the review to those paths.
+- File search box, a "Commented only" filter, and "Hide generated" toggle.
+- Generated and very large files collapse by default with click-to-expand.
+- Large-diff warning banner with mitigation hints.
+
 ## [0.3.0] - 2026-06-12
 
 ### Added

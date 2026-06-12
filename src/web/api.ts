@@ -16,7 +16,23 @@ async function json<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface RepoInfo {
+  repoRoot: string | null;
+  name: string | null;
+}
+
 export const api = {
+  async getRepo(): Promise<RepoInfo> {
+    return json(await fetch('/api/repo'));
+  },
+
+  /** Open the native folder dialog. Returns the chosen repo, or null if cancelled. */
+  async pickRepo(): Promise<RepoInfo | null> {
+    const res = await fetch('/api/repo/pick', { method: 'POST' });
+    if (res.status === 409) return null; // user cancelled the dialog
+    return json(res);
+  },
+
   async getRefs(): Promise<RefsResponse> {
     return json(await fetch('/api/refs'));
   },

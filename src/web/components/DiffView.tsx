@@ -12,28 +12,69 @@ import { detectLanguage } from '../codeThemes';
 import {
   anchorKey,
   buildChangeKeyIndex,
+  buildChangeTextIndex,
   changeAnchor,
+  changeContext,
   changeText,
   filePath,
+  isDrifted,
+  type ChangeContext,
   type FileDiff,
 } from '../diffUtils';
 import { CommentThread } from './CommentThread';
+
+export interface AddAnchor extends ChangeContext {
+  snippet: string;
+}
 
 interface Props {
   file: FileDiff;
   viewType: 'unified' | 'split';
   comments: Comment[];
-  onAdd: (file: string, side: DiffSide, line: number, snippet: string, body: string) => void;
+  onAdd: (file: string, side: DiffSide, line: number, anchor: AddAnchor, body: string) => void;
+  onAddFile: (file: string, body: string) => void;
   onResolve: (id: string, resolved: boolean) => void;
   onDelete: (id: string) => void;
+  collapsedByDefault?: boolean; // generated/large files start collapsed
+  collapseReason?: string; // why it's collapsed (shown in the placeholder)
 }
 
-export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete }: Props) {
+export function DiffView({
+  file,
+  viewType,
+  comments,
+  onAdd,
+  onAddFile,
+  onResolve,
+  onDelete,
+  collapsedByDefault = false,
+  collapseReason,
+}: Props) {
   const path = filePath(file);
-  // anchorKey -> the change's raw text, so we can store a snippet when commenting.
-  const [activeAnchor, setActiveAnchor] = useState<{ key: string; snippet: string } | null>(null);
+  // The line the user clicked, with the context captured for a durable anchor.
+  const [activeAnchor, setActiveAnchor] = useState<{ key: string; anchor: AddAnchor } | null>(
+    null,
+  );
+  const [showFileComposer, setShowFileComposer] = useState(false);
+  // Collapse generated/large files, but never hide one that has comments.
+  const [expanded, setExpanded] = useState(!collapsedByDefault || comments.length > 0);
+
+  // File-scoped comments render at the header; line comments anchor to the diff.
+  const fileComments = useMemo(() => comments.filter((c) => c.scope === 'file'), [comments]);
+  const lineComments = useMemo(() => comments.filter((c) => c.scope !== 'file'), [comments]);
 
   const changeKeyIndex = useMemo(() => buildChangeKeyIndex(file), [file]);
+  const changeTextIndex = useMemo(() => buildChangeTextIndex(file), [file]);
+
+  // Open comments whose anchor line text no longer matches their stored snippet.
+  const driftedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const c of lineComments) {
+      if (c.status === 'resolved') continue;
+      if (isDrifted(c.snippet, changeTextIndex.get(anchorKey(c.side, c.line)))) ids.add(c.id);
+    }
+    return ids;
+  }, [lineComments, changeTextIndex]);
 
   // Syntax-highlight the diff with refractor when we recognise the language.
   // Token colors come from the active [data-code-theme] (see code-themes.css).
@@ -49,14 +90,14 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
 
   const commentsByAnchor = useMemo(() => {
     const map = new Map<string, Comment[]>();
-    for (const c of comments) {
+    for (const c of lineComments) {
       const key = anchorKey(c.side, c.line);
       const list = map.get(key) ?? [];
       list.push(c);
       map.set(key, list);
     }
     return map;
-  }, [comments]);
+  }, [lineComments]);
 
   const widgets = useMemo(() => {
     const result: Record<string, React.ReactNode> = {};
@@ -75,9 +116,21 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
       result[changeKey] = (
         <CommentThread
           comments={threadComments}
+          driftedIds={driftedIds}
           autoFocus={activeAnchor?.key === aKey}
           onAdd={(body) =>
-            onAdd(path, side as DiffSide, line, activeAnchor?.snippet ?? '', body)
+            onAdd(
+              path,
+              side as DiffSide,
+              line,
+              activeAnchor?.anchor ?? {
+                snippet: '',
+                beforeContext: [],
+                afterContext: [],
+                hunkHeader: '',
+              },
+              body,
+            )
           }
           onResolve={onResolve}
           onDelete={onDelete}
@@ -85,7 +138,7 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
       );
     }
     return result;
-  }, [commentsByAnchor, activeAnchor, changeKeyIndex, path, onAdd, onResolve, onDelete]);
+  }, [commentsByAnchor, activeAnchor, changeKeyIndex, driftedIds, path, onAdd, onResolve, onDelete]);
 
   const openCount = comments.filter((c) => c.status === 'open').length;
 
@@ -94,28 +147,59 @@ export function DiffView({ file, viewType, comments, onAdd, onResolve, onDelete 
       <header className="file-diff-header">
         <span className="file-path">{path}</span>
         {openCount > 0 && <span className="badge">{openCount}</span>}
+        <span className="spacer" />
+        {collapsedByDefault && (
+          <button className="file-comment-toggle" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Collapse' : 'Show diff'}
+          </button>
+        )}
+        <button className="file-comment-toggle" onClick={() => setShowFileComposer((v) => !v)}>
+          {showFileComposer ? 'Cancel' : '+ File comment'}
+        </button>
       </header>
-      <Diff
-        viewType={viewType}
-        diffType={file.type}
-        hunks={file.hunks}
-        tokens={tokens}
-        widgets={widgets}
-        gutterEvents={{
-          onClick: ({ change }) => {
-            if (!change) return;
-            const anchor = changeAnchor(change);
-            setActiveAnchor({
-              key: anchorKey(anchor.side, anchor.line),
-              snippet: changeText(change),
-            });
-          },
-        }}
-      >
-        {(hunks: FileDiff['hunks']) =>
-          hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)
-        }
-      </Diff>
+      {(fileComments.length > 0 || showFileComposer) && (
+        <div className="file-comments">
+          <CommentThread
+            comments={fileComments}
+            showComposer={showFileComposer}
+            autoFocus={showFileComposer}
+            placeholder="Comment on this file…"
+            onAdd={(body) => {
+              onAddFile(path, body);
+              setShowFileComposer(false);
+            }}
+            onResolve={onResolve}
+            onDelete={onDelete}
+          />
+        </div>
+      )}
+      {expanded ? (
+        <Diff
+          viewType={viewType}
+          diffType={file.type}
+          hunks={file.hunks}
+          tokens={tokens}
+          widgets={widgets}
+          gutterEvents={{
+            onClick: ({ change }) => {
+              if (!change) return;
+              const anchor = changeAnchor(change);
+              setActiveAnchor({
+                key: anchorKey(anchor.side, anchor.line),
+                anchor: { snippet: changeText(change), ...changeContext(file, change) },
+              });
+            },
+          }}
+        >
+          {(hunks: FileDiff['hunks']) =>
+            hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)
+          }
+        </Diff>
+      ) : (
+        <button className="diff-collapsed" onClick={() => setExpanded(true)}>
+          {collapseReason ?? 'Collapsed'} — click to show diff
+        </button>
+      )}
     </section>
   );
 }

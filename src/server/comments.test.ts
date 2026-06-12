@@ -49,6 +49,31 @@ describe('CommentStore', () => {
     expect(await store.remove(created.id)).toBe(false);
   });
 
+  it('creates a file-scoped comment without a line anchor', async () => {
+    const c = await store.add({ file: 'a.ts', body: 'split this module', scope: 'file' });
+    expect(c.scope).toBe('file');
+    expect(c.line).toBe(0);
+    expect(c.snippet).toBe('');
+  });
+
+  it('persists durable anchor context', async () => {
+    const created = await store.add({
+      file: 'a.ts',
+      line: 5,
+      side: 'new',
+      body: 'check this',
+      snippet: 'const a = 2;',
+      beforeContext: ['line 2', 'line 3', 'line 4'],
+      afterContext: ['line 6', 'line 7'],
+      hunkHeader: '@@ -1,5 +1,6 @@',
+    });
+    expect(created.beforeContext).toEqual(['line 2', 'line 3', 'line 4']);
+    expect(created.hunkHeader).toBe('@@ -1,5 +1,6 @@');
+
+    const reread = (await new CommentStore(dir).list())[0];
+    expect(reread.afterContext).toEqual(['line 6', 'line 7']);
+  });
+
   it('persists a versioned envelope on disk', async () => {
     await store.add({ file: 'a.ts', line: 1, side: 'new', body: 'x' });
     const onDisk = JSON.parse(await readFile(path.join(dir, '.prless', 'comments.json'), 'utf8'));

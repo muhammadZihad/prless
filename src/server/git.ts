@@ -1,5 +1,7 @@
 import { simpleGit, type SimpleGit } from 'simple-git';
+import type { Ignore } from 'ignore';
 import type { DiffMode, DiffResponse, RefsResponse } from '../shared/types.js';
+import { filterDiff } from './ignore.js';
 
 export class GitError extends Error {}
 
@@ -26,8 +28,10 @@ export async function getRefs(git: SimpleGit): Promise<RefsResponse> {
  * List untracked files (respecting .gitignore). These never appear in a
  * `git diff`, so the UI warns the user that they are excluded from the review.
  */
-export async function getUntrackedFiles(git: SimpleGit): Promise<string[]> {
-  const out = await git.raw(['ls-files', '--others', '--exclude-standard']);
+export async function getUntrackedFiles(git: SimpleGit, paths: string[] = []): Promise<string[]> {
+  const args = ['ls-files', '--others', '--exclude-standard'];
+  if (paths.length) args.push('--', ...paths);
+  const out = await git.raw(args);
   return out
     .split('\n')
     .map((line) => line.trim())
@@ -45,6 +49,8 @@ export async function getDiff(
   mode: DiffMode,
   base?: string,
   head?: string,
+  ig?: Ignore | null,
+  paths: string[] = [],
 ): Promise<DiffResponse> {
   let args: string[];
 
@@ -64,12 +70,17 @@ export async function getDiff(
       break;
   }
 
+  // Scope the diff to the requested paths (CLI `-- <paths>`), if any.
+  if (paths.length) args.push('--', ...paths);
+
   // Stable, machine-friendly diff output.
-  const raw = await git.diff(['--no-color', ...args]);
+  const rawAll = await git.diff(['--no-color', ...args]);
+  const { raw, ignored } = filterDiff(rawAll, ig ?? null);
 
   // Untracked files only matter when reviewing the working tree — staged and
   // compare modes are explicit about what they include.
-  const untracked = mode === 'working' ? await getUntrackedFiles(git) : [];
+  const untrackedAll = mode === 'working' ? await getUntrackedFiles(git, paths) : [];
+  const untracked = ig ? untrackedAll.filter((f) => !ig.ignores(f)) : untrackedAll;
 
-  return { mode, base, head, raw, untracked };
+  return { mode, base, head, raw, untracked, ignored };
 }

@@ -4,15 +4,15 @@ import { existsSync } from 'node:fs';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import helmet from '@fastify/helmet';
-import { CommentStore } from './comments.js';
-import { createGit } from './git.js';
 import { registerApiRoutes } from './routes.js';
+import { RepoSession } from './session.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface ServerOptions {
-  repoRoot: string;
+  repoRoot?: string; // omitted when starting with no repo (folder-picker mode)
   dev: boolean;
+  paths?: string[]; // limit the review to these paths (CLI `-- <paths>`)
 }
 
 export async function buildServer(opts: ServerOptions): Promise<FastifyInstance> {
@@ -34,10 +34,10 @@ export async function buildServer(opts: ServerOptions): Promise<FastifyInstance>
     },
   });
 
-  const git = createGit(opts.repoRoot);
-  const store = new CommentStore(opts.repoRoot);
+  const session = new RepoSession();
+  if (opts.repoRoot) session.setRepo(opts.repoRoot);
 
-  await registerApiRoutes(app, { repoRoot: opts.repoRoot, git, store });
+  await registerApiRoutes(app, { session, paths: opts.paths ?? [] });
 
   // In dev, Vite serves the UI and proxies /api here. In a built install we
   // serve the compiled web assets ourselves so the CLI is a single process.

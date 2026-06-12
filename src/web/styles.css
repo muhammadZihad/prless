@@ -151,6 +151,94 @@ body {
   gap: 8px;
 }
 
+.repo-chip {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.repo-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.repo-picker-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  max-width: 420px;
+  padding: 36px 32px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-subtle);
+}
+
+.repo-picker-card h1 {
+  font-size: 19px;
+  margin: 4px 0 0;
+}
+
+.repo-picker-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.repo-picker-card .primary {
+  margin-top: 8px;
+  padding: 9px 20px;
+}
+
+.repo-picker-error {
+  color: var(--danger);
+}
+
+.repo-picker-hint {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.file-search {
+  font: inherit;
+  padding: 6px 10px;
+  width: 180px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.file-search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button.toggle.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.diff-collapsed {
+  width: 100%;
+  justify-content: center;
+  padding: 14px;
+  border: none;
+  border-radius: 0;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+
 /* ───────────────────────── Controls ───────────────────────── */
 
 button {
@@ -466,6 +554,17 @@ main {
   font-feature-settings: 'liga' 0;
 }
 
+.file-comment-toggle {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.file-comments {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
 /* ───────────────────────── Diff (react-diff-view) ─────────────────────────
    The diff surface is themed entirely by [data-code-theme] (code-themes.css),
    so it reads as a real editor independent of the app chrome. */
@@ -564,6 +663,65 @@ main {
 .status-chip.resolved {
   color: var(--resolved);
   background: var(--resolved-soft);
+}
+
+.drift-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: var(--open);
+  background: var(--open-soft);
+  cursor: help;
+}
+
+.orphaned {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--open);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+
+.orphaned-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.orphaned-hint {
+  margin: 6px 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.orphaned-comment {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.orphaned-loc {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.orphaned-loc .muted {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.orphaned-snippet {
+  display: block;
+  margin: 6px 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  background: var(--bg-inset);
+  color: var(--text-muted);
+  overflow-x: auto;
 }
 
 .comment-actions .spacer {

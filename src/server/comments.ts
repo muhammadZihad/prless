@@ -60,16 +60,21 @@ export class CommentStore {
   async add(input: NewComment): Promise<Comment> {
     const comments = await this.list();
     const now = new Date().toISOString();
+    const scope = input.scope ?? 'line';
     const comment: Comment = {
       id: randomUUID(),
       file: input.file,
-      line: input.line,
-      side: input.side,
+      line: input.line ?? 0,
+      side: input.side ?? 'new',
       snippet: input.snippet ?? '',
       body: input.body,
       status: 'open',
+      scope,
       createdAt: now,
       updatedAt: now,
+      ...(input.beforeContext ? { beforeContext: input.beforeContext } : {}),
+      ...(input.afterContext ? { afterContext: input.afterContext } : {}),
+      ...(input.hunkHeader ? { hunkHeader: input.hunkHeader } : {}),
     };
     comments.push(comment);
     await this.save(comments);
