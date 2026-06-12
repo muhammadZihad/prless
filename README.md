@@ -19,15 +19,6 @@ shims automatically). Prefer not to install globally? Run it on demand with `npx
 npx @muhammad_zihad/prless open .
 ```
 
-### macOS / Linux via Homebrew
-
-```bash
-brew install muhammadZihad/tap/prless
-```
-
-`brew` installs Node for you. See [packaging/README.md](packaging/README.md) for publishing
-the npm package and setting up the tap.
-
 ### From source
 
 ```bash
