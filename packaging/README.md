@@ -1,7 +1,8 @@
 # Packaging & Publishing
 
-`prless` is distributed as the npm package **`prless`** (the installed command
-is `prless`). npm is the single source of truth; Homebrew just wraps it.
+`prless` is distributed as the scoped npm package **`@muhammad_zihad/prless`** (the
+installed command is still `prless`). npm is the single source of truth; Homebrew just
+wraps it. It is scoped because npm's name-similarity filter rejects the bare name `prless`.
 
 ## 1. Publish to npm
 
@@ -12,7 +13,7 @@ into `dist/web` at build time, so it is not shipped as a dependency.
 
 ```bash
 npm login
-npm publish            # unscoped public package
+npm publish --access public    # scoped packages default to private; this makes it public
 ```
 
 Verify what ships first with `npm pack --dry-run`.
@@ -20,7 +21,7 @@ Verify what ships first with `npm pack --dry-run`.
 After publishing, anyone on macOS, Linux, or Windows can install with one command:
 
 ```bash
-npm install -g prless
+npm install -g @muhammad_zihad/prless
 prless open .
 ```
 
@@ -31,7 +32,7 @@ Homebrew has no central listing for brand-new tools, so ship it via your own *ta
 1. Compute the sha256 of the published tarball:
 
    ```bash
-   curl -sL https://registry.npmjs.org/prless/-/prless-0.1.0.tgz \
+   curl -sL https://registry.npmjs.org/@muhammad_zihad/prless/-/prless-0.1.0.tgz \
      | shasum -a 256
    ```
 
@@ -53,5 +54,5 @@ preinstalled.
 ## Releasing a new version
 
 1. Bump `version` in `package.json`.
-2. `npm publish`.
+2. `npm publish --access public`.
 3. Update `url` + `sha256` in the formula and push the tap.

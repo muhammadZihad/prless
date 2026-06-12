@@ -10,8 +10,8 @@ require "language/node"
 #        brew install muhammadZihad/tap/prless
 class Prless < Formula
   desc "Local GitHub-style code review tool with agent-agnostic AI handoff"
-  homepage "https://www.npmjs.com/package/prless"
-  url "https://registry.npmjs.org/prless/-/prless-0.1.0.tgz"
+  homepage "https://www.npmjs.com/package/@muhammad_zihad/prless"
+  url "https://registry.npmjs.org/@muhammad_zihad/prless/-/prless-0.1.0.tgz"
   sha256 "REPLACE_WITH_PUBLISHED_TARBALL_SHA256"
   license "MIT"
 
