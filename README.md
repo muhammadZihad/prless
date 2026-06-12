@@ -9,14 +9,14 @@ comments to a file that any CLI coding agent (Claude Code, Codex, …) can read 
 Requires **Node.js 18+**. One command on every platform — macOS, Linux, and Windows:
 
 ```bash
-npm install -g prless
+npm install -g @muhammad_zihad/prless
 ```
 
 That puts a `prless` command on your PATH (on Windows, npm generates the `.cmd`/PowerShell
 shims automatically). Prefer not to install globally? Run it on demand with `npx`:
 
 ```bash
-npx prless open .
+npx @muhammad_zihad/prless open .
 ```
 
 ### macOS / Linux via Homebrew

@@ -1,5 +1,5 @@
 {
-  "name": "prless",
+  "name": "@muhammad_zihad/prless",
   "version": "0.1.0",
   "description": "Local GitHub-style code review tool with agent-agnostic AI handoff",
   "type": "module",
