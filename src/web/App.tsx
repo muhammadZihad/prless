@@ -17,10 +17,14 @@ import { DiffView, type AddAnchor } from './components/DiffView';
 import { FileList } from './components/FileList';
 import { OrphanedComments } from './components/OrphanedComments';
 import { RefPicker } from './components/RefPicker';
+import { RepoPicker } from './components/RepoPicker';
 import { CodeThemePicker, ThemeToggle } from './components/Controls';
 import { Toast, type ToastState } from './components/Toast';
 
 export function App() {
+  const [repo, setRepo] = useState<{ repoRoot: string; name: string } | null>(null);
+  const [ready, setReady] = useState(false);
+  const [picking, setPicking] = useState(false);
   const [refs, setRefs] = useState<RefsResponse | null>(null);
   const [mode, setMode] = useState<DiffMode>('working');
   const [base, setBase] = useState('');
@@ -48,13 +52,49 @@ export function App() {
     }
   }, [raw]);
 
+  // On load, ask the server whether a repo is already selected.
   useEffect(() => {
+    api
+      .getRepo()
+      .then((r) => {
+        if (r.repoRoot) setRepo({ repoRoot: r.repoRoot, name: r.name ?? r.repoRoot });
+      })
+      .catch((e) => setError(String(e)))
+      .finally(() => setReady(true));
+  }, []);
+
+  // Load refs + comments whenever the active repo changes.
+  useEffect(() => {
+    if (!repo) return;
     api.getRefs().then(setRefs).catch((e) => setError(String(e)));
     api.getComments().then(setComments).catch((e) => setError(String(e)));
+  }, [repo]);
+
+  const handlePickRepo = useCallback(async () => {
+    setError('');
+    setPicking(true);
+    try {
+      const r = await api.pickRepo();
+      if (r?.repoRoot) {
+        setRepo({ repoRoot: r.repoRoot, name: r.name ?? r.repoRoot });
+        // Reset view state for the freshly selected repo.
+        setMode('working');
+        setBase('');
+        setHead('');
+      }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setPicking(false);
+    }
   }, []);
 
   const loadDiff = useCallback(async () => {
     setError('');
+    if (!repo) {
+      setRaw('');
+      return;
+    }
     if (mode === 'compare' && (!base || !head)) {
       setRaw('');
       setUntracked([]);
@@ -72,7 +112,7 @@ export function App() {
       setUntracked([]);
       setIgnored([]);
     }
-  }, [mode, base, head]);
+  }, [repo, mode, base, head]);
 
   useEffect(() => {
     loadDiff();
@@ -210,6 +250,18 @@ export function App() {
   const stats = useMemo(() => diffStats(files), [files]);
   const isLargeDiff = stats.changes > 10_000 || stats.files > 75;
 
+  if (!ready) {
+    return (
+      <div className="app">
+        <div className="empty">Starting…</div>
+      </div>
+    );
+  }
+
+  if (!repo) {
+    return <RepoPicker onPick={handlePickRepo} busy={picking} error={error} />;
+  }
+
   return (
     <div className="app">
       <header className="topbar">
@@ -223,6 +275,14 @@ export function App() {
           </span>
           <h1>PRless</h1>
         </div>
+        <button
+          className="repo-chip"
+          onClick={handlePickRepo}
+          disabled={picking}
+          title={`${repo.repoRoot} — click to switch project`}
+        >
+          {repo.name}
+        </button>
         <div className="divider" />
         <RefPicker
           refs={refs}

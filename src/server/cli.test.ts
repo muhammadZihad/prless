@@ -52,9 +52,9 @@ describe('parseOpenArgs', () => {
     expect(() => parseOpenArgs(['.', '--port'])).toThrow(CliError);
   });
 
-  it('requires a repository path', () => {
-    expect(() => parseOpenArgs([])).toThrow(CliError);
-    expect(() => parseOpenArgs(['--no-open'])).toThrow(CliError);
+  it('defaults to the current directory when no path is given', () => {
+    expect(parseOpenArgs([]).repoRoot).toBe(path.resolve('.'));
+    expect(parseOpenArgs(['--no-open']).repoRoot).toBe(path.resolve('.'));
   });
 
   it('collects paths after --', () => {

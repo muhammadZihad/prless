@@ -138,3 +138,31 @@ describe('review workflow (e2e)', () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+describe('no-repo mode (e2e)', () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    app = await buildServer({ dev: true }); // no repoRoot
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('reports no repo selected', async () => {
+    const repo = await app.inject({ method: 'GET', url: '/api/repo' });
+    expect(repo.statusCode).toBe(200);
+    expect(repo.json()).toEqual({ repoRoot: null, name: null });
+  });
+
+  it('returns 409 from repo-dependent endpoints', async () => {
+    for (const url of ['/api/refs', '/api/diff', '/api/comments']) {
+      const res = await app.inject({ method: 'GET', url });
+      expect(res.statusCode).toBe(409);
+    }
+    const exp = await app.inject({ method: 'POST', url: '/api/export' });
+    expect(exp.statusCode).toBe(409);
+  });
+});

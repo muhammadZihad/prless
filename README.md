@@ -77,7 +77,8 @@ The agent reads each comment, makes the change, and you re-review. That is the w
 ## Commands
 
 ```bash
-prless open .                       # review the repo in the current directory
+prless                              # start with no repo; pick a folder in the browser
+prless open                         # review the current directory (same as: prless open .)
 prless open ~/projects/my-app       # review a repo by path
 prless open . --port 4200           # serve on a custom port (default 4100)
 prless open . --no-open             # don't launch a browser automatically

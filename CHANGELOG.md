@@ -8,6 +8,8 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Run bare `prless` to start with no repository selected and pick a folder from the native OS
+  dialog in the browser; `prless open` with no path now defaults to the current directory.
 - Durable comment anchors: comments store surrounding context + the hunk header.
 - Comment drift detection — a "code changed" badge when an anchor line no longer matches.
 - Orphaned comments: a dedicated UI section and an `## Orphaned Comments` block in the export

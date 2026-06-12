@@ -12,29 +12,33 @@ const pkg = require('../../package.json') as { version: string };
 /** A user-facing CLI error: printed as a clean message, no stack trace. */
 export class CliError extends Error {}
 
-interface OpenOptions {
-  repoRoot: string;
+interface ServeFlags {
   dev: boolean;
   port: number;
   noOpen: boolean;
   paths: string[];
 }
 
+interface OpenOptions extends ServeFlags {
+  repoRoot: string;
+}
+
 const USAGE = `prless — local code review with agent-agnostic AI handoff
 
 Usage:
-  prless open <repository>   Review a git repository at the given path
-  prless open .              Review the git repository in the current directory
+  prless                     Start with no repo and pick a folder in the browser
+  prless open [repository]   Review a git repository (defaults to the current directory)
   prless help                Show this help
   prless --version           Show the installed version
 
-Options (for "open"):
+Options:
   --port <n>     Port to serve on, 1-65535 (default 4100, or $PRLESS_PORT)
   --no-open      Do not launch a browser automatically
   --dev          Internal: run the API only (UI served by the Vite dev server)
   -- <paths…>    Limit the review to the given paths (everything after --)
 
 Examples:
+  prless
   prless open .
   prless open ~/projects/my-app
   prless open ./my-app --port 4200
@@ -56,7 +60,7 @@ export function parsePort(value: string | undefined): number {
   return port;
 }
 
-export function parseOpenArgs(rest: string[]): OpenOptions {
+export function parseFlags(rest: string[]): ServeFlags & { repoArg?: string } {
   // Everything after a bare `--` is a list of paths to scope the review to.
   const sep = rest.indexOf('--');
   const paths = sep === -1 ? [] : rest.slice(sep + 1).filter((p) => p.length > 0);
@@ -75,20 +79,47 @@ export function parseOpenArgs(rest: string[]): OpenOptions {
     else if (!a.startsWith('-') && repoArg === undefined) repoArg = a;
   }
 
-  if (repoArg === undefined) {
-    throw new CliError(
-      'prless: "open" requires a repository path (use "." for the current directory).',
-    );
+  return { dev, noOpen, port, paths, repoArg };
+}
+
+export function parseOpenArgs(rest: string[]): OpenOptions {
+  const { repoArg, ...flags } = parseFlags(rest);
+  return {
+    // No path means the current directory; path.resolve normalises per-platform.
+    repoRoot: path.resolve(repoArg ?? '.'),
+    ...flags,
+  };
+}
+
+/** Listen, then report and open the browser. Shared by repo and no-repo modes. */
+async function serve(
+  app: Awaited<ReturnType<typeof buildServer>>,
+  flags: ServeFlags,
+  repoRoot?: string,
+): Promise<void> {
+  try {
+    await app.listen({ port: flags.port, host: '127.0.0.1' });
+  } catch (err) {
+    if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+      throw new CliError(
+        `Port ${flags.port} is already in use.\n\nTry:\n  prless --port ${flags.port + 1}`,
+      );
+    }
+    throw err;
   }
 
-  return {
-    // path.resolve normalises against cwd on every platform (mac/linux/windows).
-    repoRoot: path.resolve(repoArg),
-    dev,
-    noOpen,
-    port,
-    paths,
-  };
+  const url = flags.dev ? `http://localhost:5174` : `http://localhost:${flags.port}`;
+  if (repoRoot) console.log(`prless: reviewing ${repoRoot}`);
+  else console.log('prless: no repository selected — choose a project in the browser');
+  console.log(`prless: serving ${flags.dev ? 'API' : 'UI'} on http://localhost:${flags.port}`);
+  if (flags.dev) console.log(`prless: open the Vite dev server at ${url}`);
+
+  if (!flags.dev && !flags.noOpen) {
+    await open(url).catch(() => {
+      // Launching a browser is best-effort and varies by platform.
+      console.log(`prless: open ${url} in your browser`);
+    });
+  }
 }
 
 async function runOpen(opts: OpenOptions): Promise<void> {
@@ -103,28 +134,13 @@ async function runOpen(opts: OpenOptions): Promise<void> {
   }
 
   const app = await buildServer({ repoRoot: opts.repoRoot, dev: opts.dev, paths: opts.paths });
-  try {
-    await app.listen({ port: opts.port, host: '127.0.0.1' });
-  } catch (err) {
-    if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'EADDRINUSE') {
-      throw new CliError(
-        `Port ${opts.port} is already in use.\n\nTry:\n  prless open . --port ${opts.port + 1}`,
-      );
-    }
-    throw err;
-  }
+  await serve(app, opts, opts.repoRoot);
+}
 
-  const url = opts.dev ? `http://localhost:5174` : `http://localhost:${opts.port}`;
-  console.log(`prless: reviewing ${opts.repoRoot}`);
-  console.log(`prless: serving ${opts.dev ? 'API' : 'UI'} on http://localhost:${opts.port}`);
-  if (opts.dev) console.log(`prless: open the Vite dev server at ${url}`);
-
-  if (!opts.dev && !opts.noOpen) {
-    await open(url).catch(() => {
-      // Launching a browser is best-effort and varies by platform.
-      console.log(`prless: open ${url} in your browser`);
-    });
-  }
+/** Start with no repo selected; the user picks one in the browser. */
+async function runNoRepo(flags: ServeFlags): Promise<void> {
+  const app = await buildServer({ dev: flags.dev, paths: flags.paths });
+  await serve(app, flags);
 }
 
 async function main(): Promise<void> {
@@ -144,10 +160,18 @@ async function main(): Promise<void> {
     case 'help':
     case '--help':
     case '-h':
-    case undefined:
       console.log(USAGE);
       break;
+    case undefined:
+      // Bare `prless`: start with no repo and pick a folder in the browser.
+      await runNoRepo(parseFlags([]));
+      break;
     default:
+      if (command.startsWith('-')) {
+        // `prless --port 4200` etc. — no-repo mode with options.
+        await runNoRepo(parseFlags(argv));
+        break;
+      }
       console.error(`prless: unknown command "${command}"\n`);
       console.error(USAGE);
       process.exit(1);
