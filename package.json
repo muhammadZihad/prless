@@ -4,6 +4,7 @@
   "description": "Local GitHub-style code review tool with agent-agnostic AI handoff",
   "type": "module",
   "license": "MIT",
+  "author": "Muhammad AR Zihad <zihad@blubirdinteractive.com>",
   "homepage": "https://github.com/muhammadZihad/prless#readme",
   "repository": {
     "type": "git",
@@ -18,9 +19,18 @@
     "git",
     "cli",
     "ai",
+    "ai-agent",
     "claude",
-    "codex"
+    "claude-code",
+    "codex",
+    "cursor",
+    "local-first",
+    "pull-request",
+    "developer-tools"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "prless": "dist/server/cli.js"
   },
@@ -29,7 +39,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
