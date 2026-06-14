@@ -5,6 +5,11 @@ export const DiffQuerySchema = z
     mode: z.enum(['working', 'staged', 'compare']).default('working'),
     base: z.string().min(1).optional(),
     head: z.string().min(1).optional(),
+    // Query params arrive as strings; only an explicit "false" disables it.
+    unstaged: z
+      .enum(['true', 'false'])
+      .optional()
+      .transform((v) => v !== 'false'),
   })
   .refine((q) => q.mode !== 'compare' || (!!q.base && !!q.head), {
     message: 'compare mode requires both base and head',

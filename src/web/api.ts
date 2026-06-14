@@ -38,10 +38,16 @@ export const api = {
     return json(await fetch('/api/refs'));
   },
 
-  async getDiff(mode: DiffMode, base?: string, head?: string): Promise<DiffResponse> {
+  async getDiff(
+    mode: DiffMode,
+    base?: string,
+    head?: string,
+    includeUnstaged = true,
+  ): Promise<DiffResponse> {
     const params = new URLSearchParams({ mode });
     if (base) params.set('base', base);
     if (head) params.set('head', head);
+    if (!includeUnstaged) params.set('unstaged', 'false');
     return json(await fetch(`/api/diff?${params.toString()}`));
   },
 

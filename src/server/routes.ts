@@ -66,10 +66,18 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
     if (!parsed.success) {
       return reply.code(400).send({ error: formatZodError(parsed.error) });
     }
-    const { mode, base, head } = parsed.data;
+    const { mode, base, head, unstaged } = parsed.data;
     try {
       const ig = await loadIgnore(repo.repoRoot);
-      return await getDiff(repo.git, mode, base, head, ig, ctx.paths);
+      return await getDiff(repo.git, {
+        mode,
+        base,
+        head,
+        ig,
+        paths: ctx.paths,
+        repoRoot: repo.repoRoot,
+        includeUnstaged: unstaged,
+      });
     } catch (err) {
       if (err instanceof GitError) {
         return reply.code(400).send({ error: err.message });
@@ -132,8 +140,13 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
     const all = await repo.store.list();
     // Don't export comments on files hidden by .prlessignore.
     const comments = ig ? all.filter((c) => !ig.ignores(c.file)) : all;
-    // Use the working-tree diff as the reference for untracked + orphan detection.
-    const diff = await getDiff(repo.git, 'working', undefined, undefined, ig, ctx.paths);
+    // Use the working-tree diff as the reference for orphan detection.
+    const diff = await getDiff(repo.git, {
+      mode: 'working',
+      ig,
+      paths: ctx.paths,
+      repoRoot: repo.repoRoot,
+    });
     return exportReview(
       repo.repoRoot,
       comments,

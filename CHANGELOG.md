@@ -12,6 +12,8 @@ All notable changes to this project are documented here. The format is based on
 - Per-comment selection — tick comments to export just those.
 - Cancel/close button (and Esc) on the comment composer; line composers open on click and
   existing threads get an "Add a comment" button.
+- Show/hide unstaged + untracked toggle (working mode). Untracked files now render as
+  new-file diffs so they're reviewable; turning it off gives a staged-only view.
 
 ### Changed
 

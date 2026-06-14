@@ -37,6 +37,7 @@ export function App() {
   const [fileQuery, setFileQuery] = useState('');
   const [commentedOnly, setCommentedOnly] = useState(false);
   const [hideGenerated, setHideGenerated] = useState(false);
+  const [showUnstaged, setShowUnstaged] = useState(true);
   const [largeDismissed, setLargeDismissed] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -108,7 +109,7 @@ export function App() {
       return;
     }
     try {
-      const res = await api.getDiff(mode, base, head);
+      const res = await api.getDiff(mode, base, head, showUnstaged);
       setRaw(res.raw);
       setUntracked(res.untracked ?? []);
       setIgnored(res.ignored ?? []);
@@ -118,7 +119,7 @@ export function App() {
       setUntracked([]);
       setIgnored([]);
     }
-  }, [repo, mode, base, head]);
+  }, [repo, mode, base, head, showUnstaged]);
 
   useEffect(() => {
     loadDiff();
@@ -344,8 +345,8 @@ export function App() {
 
       {untracked.length > 0 && (
         <div className="banner warning">
-          {untracked.length} untracked {untracked.length === 1 ? 'file is' : 'files are'} not
-          included in this review. Run <code>git add -N &lt;file&gt;</code> to include{' '}
+          {untracked.length} untracked {untracked.length === 1 ? 'file is' : 'files are'} hidden.
+          Turn on <strong>Showing unstaged + untracked</strong> to include{' '}
           {untracked.length === 1 ? 'it' : 'them'}.
         </div>
       )}
@@ -394,6 +395,15 @@ export function App() {
                 Hide generated
               </button>
             </div>
+            {mode === 'working' && (
+              <button
+                className={`toggle${showUnstaged ? ' active' : ''}`}
+                onClick={() => setShowUnstaged((v) => !v)}
+                title="Include unstaged changes and untracked files (off = staged only)"
+              >
+                {showUnstaged ? 'Showing unstaged + untracked' : 'Staged only'}
+              </button>
+            )}
           </div>
           <FileList files={visibleFiles} comments={comments} />
         </aside>

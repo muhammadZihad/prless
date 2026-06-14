@@ -34,7 +34,7 @@ describe('git layer', () => {
 
   it('produces a working-tree diff for uncommitted changes', async () => {
     await writeFile(path.join(dir, 'a.ts'), 'const a = 2;\n');
-    const res = await getDiff(createGit(dir), 'working');
+    const res = await getDiff(createGit(dir), { mode: 'working', repoRoot: dir });
     expect(res.raw).toContain('a.ts');
     expect(res.raw).toContain('-const a = 1;');
     expect(res.raw).toContain('+const a = 2;');
@@ -58,17 +58,35 @@ describe('git layer', () => {
     await writeFile(path.join(dir, 'a.ts'), 'const a = 3;\n');
     await writeFile(path.join(dir, 'b.ts'), 'const b = 3;\n');
 
-    const scoped = await getDiff(createGit(dir), 'working', undefined, undefined, null, ['a.ts']);
+    const scoped = await getDiff(createGit(dir), {
+      mode: 'working',
+      repoRoot: dir,
+      paths: ['a.ts'],
+    });
     expect(scoped.raw).toContain('a.ts');
     expect(scoped.raw).not.toContain('b.ts');
   });
 
-  it('reports untracked files in a working-tree diff but not in compare mode', async () => {
+  it('renders untracked file contents when including unstaged', async () => {
     await writeFile(path.join(dir, 'new.ts'), 'export const n = 1;\n');
-    const working = await getDiff(createGit(dir), 'working');
-    expect(working.untracked).toContain('new.ts');
+    const res = await getDiff(createGit(dir), { mode: 'working', repoRoot: dir });
+    // Rendered as a synthetic new-file diff, not just listed.
+    expect(res.raw).toContain('new.ts');
+    expect(res.raw).toContain('+export const n = 1;');
+    expect(res.untracked).toEqual([]);
+  });
 
-    const staged = await getDiff(createGit(dir), 'staged');
-    expect(staged.untracked).toEqual([]);
+  it('hides unstaged + untracked and lists them when includeUnstaged is false', async () => {
+    await writeFile(path.join(dir, 'a.ts'), 'const a = 2;\n'); // unstaged edit
+    await writeFile(path.join(dir, 'new.ts'), 'export const n = 1;\n'); // untracked
+    const res = await getDiff(createGit(dir), {
+      mode: 'working',
+      repoRoot: dir,
+      includeUnstaged: false,
+    });
+    // Staged-only diff: the unstaged edit and untracked file are not shown.
+    expect(res.raw).not.toContain('const a = 2;');
+    expect(res.raw).not.toContain('new.ts');
+    expect(res.untracked).toContain('new.ts');
   });
 });

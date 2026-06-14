@@ -98,19 +98,18 @@ describe('review workflow (e2e)', () => {
     expect(diff.json().raw.trim()).toBe('');
   });
 
-  it('flags untracked files in the diff and the export note', async () => {
+  it('renders untracked files by default and lists them when unstaged is hidden', async () => {
     await writeFile(path.join(dir, 'new.ts'), 'export const n = 1;\n');
 
-    const diff = await app.inject({ method: 'GET', url: '/api/diff?mode=working' });
-    expect(diff.json().untracked).toContain('new.ts');
+    const shown = await app.inject({ method: 'GET', url: '/api/diff?mode=working' });
+    // Rendered into the diff (commentable), not just flagged.
+    expect(shown.json().raw).toContain('new.ts');
+    expect(shown.json().raw).toContain('+export const n = 1;');
+    expect(shown.json().untracked).toEqual([]);
 
-    await app.inject({
-      method: 'POST',
-      url: '/api/comments',
-      payload: { file: 'a.ts', line: 1, side: 'new', body: 'note' },
-    });
-    await app.inject({ method: 'POST', url: '/api/export' });
-    expect(await reviewMd()).toContain('`new.ts`');
+    const hidden = await app.inject({ method: 'GET', url: '/api/diff?mode=working&unstaged=false' });
+    expect(hidden.json().raw).not.toContain('new.ts');
+    expect(hidden.json().untracked).toContain('new.ts');
   });
 
   it('hides files matched by .prlessignore from the diff', async () => {
