@@ -253,6 +253,13 @@ button.toggle.active {
   border-color: var(--accent);
 }
 
+.thread-reply {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border-style: dashed;
+}
+
 .select-comment {
   display: inline-flex;
   align-items: center;

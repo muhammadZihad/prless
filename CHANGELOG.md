@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format is based on
 
 - Improved, numbered AI instruction header and a `## Summary` section in the exported review.
 - Per-comment selection — tick comments to export just those.
+- Cancel/close button (and Esc) on the comment composer; line composers open on click and
+  existing threads get an "Add a comment" button.
 
 ### Changed
 

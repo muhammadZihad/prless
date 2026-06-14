@@ -113,20 +113,28 @@ export interface ChangeContext {
   hunkHeader: string;
 }
 
+export interface AnchorInfo extends ChangeContext {
+  snippet: string;
+}
+
 /**
- * Capture durable anchor context for a change: a few lines above/below and the
- * containing hunk header. Lets a comment be re-located when line numbers shift.
+ * Build a "side:line" -> durable anchor (snippet + surrounding context + hunk
+ * header) map for a file, in a single pass. Used both when a comment is created
+ * and when its composer is re-opened. Lets a comment be re-located when line
+ * numbers shift.
  */
-export function changeContext(file: FileDiff, change: Change, n = 3): ChangeContext {
-  const key = getChangeKey(change);
+export function buildAnchorInfo(file: FileDiff, n = 3): Map<string, AnchorInfo> {
+  const map = new Map<string, AnchorInfo>();
   for (const hunk of file.hunks) {
-    const idx = hunk.changes.findIndex((c) => getChangeKey(c) === key);
-    if (idx === -1) continue;
-    return {
-      beforeContext: hunk.changes.slice(Math.max(0, idx - n), idx).map(changeText),
-      afterContext: hunk.changes.slice(idx + 1, idx + 1 + n).map(changeText),
-      hunkHeader: hunk.content,
-    };
+    hunk.changes.forEach((change, idx) => {
+      const anchor = changeAnchor(change);
+      map.set(`${anchor.side}:${anchor.line}`, {
+        snippet: changeText(change),
+        beforeContext: hunk.changes.slice(Math.max(0, idx - n), idx).map(changeText),
+        afterContext: hunk.changes.slice(idx + 1, idx + 1 + n).map(changeText),
+        hunkHeader: hunk.content,
+      });
+    });
   }
-  return { beforeContext: [], afterContext: [], hunkHeader: '' };
+  return map;
 }

@@ -11,21 +11,20 @@ const refractorAdapter = {
 import { detectLanguage } from '../codeThemes';
 import {
   anchorKey,
+  buildAnchorInfo,
   buildChangeKeyIndex,
   buildChangeTextIndex,
   changeAnchor,
-  changeContext,
-  changeText,
   filePath,
   isDrifted,
-  type ChangeContext,
+  type AnchorInfo,
   type FileDiff,
 } from '../diffUtils';
 import { CommentThread } from './CommentThread';
 
-export interface AddAnchor extends ChangeContext {
-  snippet: string;
-}
+export type AddAnchor = AnchorInfo;
+
+const EMPTY_ANCHOR: AddAnchor = { snippet: '', beforeContext: [], afterContext: [], hunkHeader: '' };
 
 interface Props {
   file: FileDiff;
@@ -69,6 +68,7 @@ export function DiffView({
 
   const changeKeyIndex = useMemo(() => buildChangeKeyIndex(file), [file]);
   const changeTextIndex = useMemo(() => buildChangeTextIndex(file), [file]);
+  const anchorInfo = useMemo(() => buildAnchorInfo(file), [file]);
 
   // Open comments whose anchor line text no longer matches their stored snippet.
   const driftedIds = useMemo(() => {
@@ -116,6 +116,7 @@ export function DiffView({
       const [side, lineStr] = aKey.split(':');
       const line = Number(lineStr);
       const threadComments = commentsByAnchor.get(aKey) ?? [];
+      const isActive = activeAnchor?.key === aKey;
 
       result[changeKey] = (
         <CommentThread
@@ -123,21 +124,16 @@ export function DiffView({
           driftedIds={driftedIds}
           selectedIds={selectedIds}
           onToggleSelect={onToggleSelect}
-          autoFocus={activeAnchor?.key === aKey}
-          onAdd={(body) =>
-            onAdd(
-              path,
-              side as DiffSide,
-              line,
-              activeAnchor?.anchor ?? {
-                snippet: '',
-                beforeContext: [],
-                afterContext: [],
-                hunkHeader: '',
-              },
-              body,
-            )
+          showComposer={isActive}
+          autoFocus={isActive}
+          onReply={() =>
+            setActiveAnchor({ key: aKey, anchor: anchorInfo.get(aKey) ?? EMPTY_ANCHOR })
           }
+          onCancel={() => setActiveAnchor(null)}
+          onAdd={(body) => {
+            onAdd(path, side as DiffSide, line, activeAnchor?.anchor ?? EMPTY_ANCHOR, body);
+            setActiveAnchor(null);
+          }}
           onResolve={onResolve}
           onDelete={onDelete}
         />
@@ -148,6 +144,7 @@ export function DiffView({
     commentsByAnchor,
     activeAnchor,
     changeKeyIndex,
+    anchorInfo,
     driftedIds,
     selectedIds,
     onToggleSelect,
@@ -187,6 +184,7 @@ export function DiffView({
               onAddFile(path, body);
               setShowFileComposer(false);
             }}
+            onCancel={() => setShowFileComposer(false)}
             onResolve={onResolve}
             onDelete={onDelete}
           />
@@ -203,10 +201,8 @@ export function DiffView({
             onClick: ({ change }) => {
               if (!change) return;
               const anchor = changeAnchor(change);
-              setActiveAnchor({
-                key: anchorKey(anchor.side, anchor.line),
-                anchor: { snippet: changeText(change), ...changeContext(file, change) },
-              });
+              const key = anchorKey(anchor.side, anchor.line);
+              setActiveAnchor({ key, anchor: anchorInfo.get(key) ?? EMPTY_ANCHOR });
             },
           }}
         >
