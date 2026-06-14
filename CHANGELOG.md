@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- CI: bump `actions/checkout` and `actions/setup-node` to v5 (Node 24 runtime) to clear the
+  Node 20 deprecation.
+
 ## [0.5.0] - 2026-06-14
 
 ### Added
