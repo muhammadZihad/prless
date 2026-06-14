@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-14
+
 ### Added
 
 - Improved, numbered AI instruction header and a `## Summary` section in the exported review.
