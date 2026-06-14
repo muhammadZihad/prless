@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Export profiles (Generic / Claude Code / Codex / Cursor) that tune the instruction header.
+- Export formats: Markdown, Checklist (`- [ ]` items), and structured JSON (`.prless/review.json`).
+- Improved, numbered AI instruction header and a `## Summary` section in exports.
+- "Copy Claude" / "Copy Codex" buttons that copy a ready-to-run agent command.
+- Per-comment selection — export just the checked comments.
+- Export only unresolved comments by default, with an option to include resolved ones.
+
 ## [0.4.0] - 2026-06-12
 
 ### Added
