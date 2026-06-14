@@ -10,6 +10,10 @@ interface Props {
   driftedIds?: Set<string>;
   showComposer?: boolean;
   placeholder?: string;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onCancel?: () => void; // close/dismiss the composer
+  onReply?: () => void; // open the composer on an existing thread
 }
 
 export function CommentThread({
@@ -21,6 +25,10 @@ export function CommentThread({
   driftedIds,
   showComposer = true,
   placeholder = 'Leave a comment…',
+  selectedIds,
+  onToggleSelect,
+  onCancel,
+  onReply,
 }: Props) {
   const [draft, setDraft] = useState('');
 
@@ -31,12 +39,26 @@ export function CommentThread({
     setDraft('');
   };
 
+  const cancel = () => {
+    setDraft('');
+    onCancel?.();
+  };
+
   return (
     <div className="thread">
       {comments.map((c) => (
         <div key={c.id} className={`review-comment ${c.status === 'resolved' ? 'resolved' : ''}`}>
           <div className="comment-body">{c.body}</div>
           <div className="comment-actions">
+            {onToggleSelect && (
+              <label className="select-comment" title="Include in export">
+                <input
+                  type="checkbox"
+                  checked={selectedIds?.has(c.id) ?? false}
+                  onChange={() => onToggleSelect(c.id)}
+                />
+              </label>
+            )}
             <span className={`status-chip ${c.status}`}>{c.status}</span>
             {driftedIds?.has(c.id) && (
               <span className="drift-badge" title="The code on this line changed since the comment was written.">
@@ -51,7 +73,7 @@ export function CommentThread({
           </div>
         </div>
       ))}
-      {showComposer && (
+      {showComposer ? (
         <div className="composer">
           <textarea
             autoFocus={autoFocus}
@@ -60,17 +82,29 @@ export function CommentThread({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
+              else if (e.key === 'Escape' && onCancel) cancel();
             }}
           />
           <div className="composer-actions">
             <button className="primary" onClick={submit} disabled={!draft.trim()}>
               Comment
             </button>
+            {onCancel && (
+              <button onClick={cancel} title="Close (Esc)">
+                Cancel
+              </button>
+            )}
             <span className="hint">
               <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>↵</kbd> to submit
             </span>
           </div>
         </div>
+      ) : (
+        onReply && (
+          <button className="thread-reply" onClick={onReply}>
+            + Add a comment
+          </button>
+        )
       )}
     </div>
   );

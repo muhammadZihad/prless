@@ -6,6 +6,7 @@ import { pickFolder, PickerUnavailableError } from './picker.js';
 import {
   CreateCommentSchema,
   DiffQuerySchema,
+  ExportOptionsSchema,
   PatchCommentSchema,
   formatZodError,
 } from './schemas.js';
@@ -65,10 +66,18 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
     if (!parsed.success) {
       return reply.code(400).send({ error: formatZodError(parsed.error) });
     }
-    const { mode, base, head } = parsed.data;
+    const { mode, base, head, unstaged } = parsed.data;
     try {
       const ig = await loadIgnore(repo.repoRoot);
-      return await getDiff(repo.git, mode, base, head, ig, ctx.paths);
+      return await getDiff(repo.git, {
+        mode,
+        base,
+        head,
+        ig,
+        paths: ctx.paths,
+        repoRoot: repo.repoRoot,
+        includeUnstaged: unstaged,
+      });
     } catch (err) {
       if (err instanceof GitError) {
         return reply.code(400).send({ error: err.message });
@@ -120,15 +129,29 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
     return reply.code(204).send();
   });
 
-  app.post('/api/export', async (_request, reply) => {
+  app.post('/api/export', async (request, reply) => {
     const repo = requireRepo(reply);
     if (!repo) return reply;
+    const parsed = ExportOptionsSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: formatZodError(parsed.error) });
+    }
     const ig = await loadIgnore(repo.repoRoot);
     const all = await repo.store.list();
     // Don't export comments on files hidden by .prlessignore.
     const comments = ig ? all.filter((c) => !ig.ignores(c.file)) : all;
-    // Use the working-tree diff as the reference for untracked + orphan detection.
-    const diff = await getDiff(repo.git, 'working', undefined, undefined, ig, ctx.paths);
-    return exportReview(repo.repoRoot, comments, diff.untracked, diff.raw);
+    // Use the working-tree diff as the reference for orphan detection.
+    const diff = await getDiff(repo.git, {
+      mode: 'working',
+      ig,
+      paths: ctx.paths,
+      repoRoot: repo.repoRoot,
+    });
+    return exportReview(
+      repo.repoRoot,
+      comments,
+      { options: parsed.data, untracked: diff.untracked, rawDiff: diff.raw },
+      new Date().toISOString(),
+    );
   });
 }

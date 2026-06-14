@@ -11,21 +11,20 @@ const refractorAdapter = {
 import { detectLanguage } from '../codeThemes';
 import {
   anchorKey,
+  buildAnchorInfo,
   buildChangeKeyIndex,
   buildChangeTextIndex,
   changeAnchor,
-  changeContext,
-  changeText,
   filePath,
   isDrifted,
-  type ChangeContext,
+  type AnchorInfo,
   type FileDiff,
 } from '../diffUtils';
 import { CommentThread } from './CommentThread';
 
-export interface AddAnchor extends ChangeContext {
-  snippet: string;
-}
+export type AddAnchor = AnchorInfo;
+
+const EMPTY_ANCHOR: AddAnchor = { snippet: '', beforeContext: [], afterContext: [], hunkHeader: '' };
 
 interface Props {
   file: FileDiff;
@@ -37,6 +36,8 @@ interface Props {
   onDelete: (id: string) => void;
   collapsedByDefault?: boolean; // generated/large files start collapsed
   collapseReason?: string; // why it's collapsed (shown in the placeholder)
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 export function DiffView({
@@ -49,6 +50,8 @@ export function DiffView({
   onDelete,
   collapsedByDefault = false,
   collapseReason,
+  selectedIds,
+  onToggleSelect,
 }: Props) {
   const path = filePath(file);
   // The line the user clicked, with the context captured for a durable anchor.
@@ -65,6 +68,7 @@ export function DiffView({
 
   const changeKeyIndex = useMemo(() => buildChangeKeyIndex(file), [file]);
   const changeTextIndex = useMemo(() => buildChangeTextIndex(file), [file]);
+  const anchorInfo = useMemo(() => buildAnchorInfo(file), [file]);
 
   // Open comments whose anchor line text no longer matches their stored snippet.
   const driftedIds = useMemo(() => {
@@ -112,33 +116,43 @@ export function DiffView({
       const [side, lineStr] = aKey.split(':');
       const line = Number(lineStr);
       const threadComments = commentsByAnchor.get(aKey) ?? [];
+      const isActive = activeAnchor?.key === aKey;
 
       result[changeKey] = (
         <CommentThread
           comments={threadComments}
           driftedIds={driftedIds}
-          autoFocus={activeAnchor?.key === aKey}
-          onAdd={(body) =>
-            onAdd(
-              path,
-              side as DiffSide,
-              line,
-              activeAnchor?.anchor ?? {
-                snippet: '',
-                beforeContext: [],
-                afterContext: [],
-                hunkHeader: '',
-              },
-              body,
-            )
+          selectedIds={selectedIds}
+          onToggleSelect={onToggleSelect}
+          showComposer={isActive}
+          autoFocus={isActive}
+          onReply={() =>
+            setActiveAnchor({ key: aKey, anchor: anchorInfo.get(aKey) ?? EMPTY_ANCHOR })
           }
+          onCancel={() => setActiveAnchor(null)}
+          onAdd={(body) => {
+            onAdd(path, side as DiffSide, line, activeAnchor?.anchor ?? EMPTY_ANCHOR, body);
+            setActiveAnchor(null);
+          }}
           onResolve={onResolve}
           onDelete={onDelete}
         />
       );
     }
     return result;
-  }, [commentsByAnchor, activeAnchor, changeKeyIndex, driftedIds, path, onAdd, onResolve, onDelete]);
+  }, [
+    commentsByAnchor,
+    activeAnchor,
+    changeKeyIndex,
+    anchorInfo,
+    driftedIds,
+    selectedIds,
+    onToggleSelect,
+    path,
+    onAdd,
+    onResolve,
+    onDelete,
+  ]);
 
   const openCount = comments.filter((c) => c.status === 'open').length;
 
@@ -164,10 +178,13 @@ export function DiffView({
             showComposer={showFileComposer}
             autoFocus={showFileComposer}
             placeholder="Comment on this file…"
+            selectedIds={selectedIds}
+            onToggleSelect={onToggleSelect}
             onAdd={(body) => {
               onAddFile(path, body);
               setShowFileComposer(false);
             }}
+            onCancel={() => setShowFileComposer(false)}
             onResolve={onResolve}
             onDelete={onDelete}
           />
@@ -184,10 +201,8 @@ export function DiffView({
             onClick: ({ change }) => {
               if (!change) return;
               const anchor = changeAnchor(change);
-              setActiveAnchor({
-                key: anchorKey(anchor.side, anchor.line),
-                anchor: { snippet: changeText(change), ...changeContext(file, change) },
-              });
+              const key = anchorKey(anchor.side, anchor.line);
+              setActiveAnchor({ key, anchor: anchorInfo.get(key) ?? EMPTY_ANCHOR });
             },
           }}
         >

@@ -3,6 +3,7 @@ import type {
   CommentPatch,
   DiffMode,
   DiffResponse,
+  ExportOptions,
   ExportResponse,
   NewComment,
   RefsResponse,
@@ -37,10 +38,16 @@ export const api = {
     return json(await fetch('/api/refs'));
   },
 
-  async getDiff(mode: DiffMode, base?: string, head?: string): Promise<DiffResponse> {
+  async getDiff(
+    mode: DiffMode,
+    base?: string,
+    head?: string,
+    includeUnstaged = true,
+  ): Promise<DiffResponse> {
     const params = new URLSearchParams({ mode });
     if (base) params.set('base', base);
     if (head) params.set('head', head);
+    if (!includeUnstaged) params.set('unstaged', 'false');
     return json(await fetch(`/api/diff?${params.toString()}`));
   },
 
@@ -73,7 +80,13 @@ export const api = {
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   },
 
-  async exportReview(): Promise<ExportResponse> {
-    return json(await fetch('/api/export', { method: 'POST' }));
+  async exportReview(options: ExportOptions = {}): Promise<ExportResponse> {
+    return json(
+      await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(options),
+      }),
+    );
   },
 };

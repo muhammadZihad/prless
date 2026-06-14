@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Improved, numbered AI instruction header and a `## Summary` section in the exported review.
+- Per-comment selection — tick comments to export just those.
+- Cancel/close button (and Esc) on the comment composer; line composers open on click and
+  existing threads get an "Add a comment" button.
+- Show/hide unstaged + untracked toggle (working mode). Untracked files now render as
+  new-file diffs so they're reviewable; turning it off gives a staged-only view.
+
+### Changed
+
+- Decluttered the header: file search and the Commented / Hide-generated filters moved into the
+  file-list sidebar.
+
 ## [0.4.0] - 2026-06-12
 
 ### Added

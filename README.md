@@ -126,6 +126,9 @@ large files collapse by default.
 - The handoff is a plain file plus a clipboard copy, so it works with any agent. No MCP,
   no API keys.
 
+The exported `review.md` opens with a short summary and groups comments by file. It contains
+only unresolved comments. Tick individual comments to **export just those**.
+
 ## Local-only & privacy
 
 PRless runs entirely on your machine. It does not send your code, diffs, or comments to

@@ -37,7 +37,9 @@ export function App() {
   const [fileQuery, setFileQuery] = useState('');
   const [commentedOnly, setCommentedOnly] = useState(false);
   const [hideGenerated, setHideGenerated] = useState(false);
+  const [showUnstaged, setShowUnstaged] = useState(true);
   const [largeDismissed, setLargeDismissed] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState | null>(null);
   const [error, setError] = useState<string>('');
   const [exported, setExported] = useState(false);
@@ -107,7 +109,7 @@ export function App() {
       return;
     }
     try {
-      const res = await api.getDiff(mode, base, head);
+      const res = await api.getDiff(mode, base, head, showUnstaged);
       setRaw(res.raw);
       setUntracked(res.untracked ?? []);
       setIgnored(res.ignored ?? []);
@@ -117,7 +119,7 @@ export function App() {
       setUntracked([]);
       setIgnored([]);
     }
-  }, [repo, mode, base, head]);
+  }, [repo, mode, base, head, showUnstaged]);
 
   useEffect(() => {
     loadDiff();
@@ -176,36 +178,38 @@ export function App() {
     }
   }, []);
 
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const handleExport = useCallback(async () => {
     try {
-      const res = await api.exportReview();
+      const res = await api.exportReview({
+        commentIds: selectedIds.size ? [...selectedIds] : undefined,
+      });
       if (res.count === 0) {
-        setToast({ message: 'No open comments to export.', tone: 'error' });
+        setToast({ message: 'No comments to export.', tone: 'error' });
         return;
       }
-      // Fall back to a path-based instruction if an older server build didn't
-      // return the rendered content, so we never copy a literal "undefined".
-      const instructions =
-        res.content && res.content.trim()
-          ? res.content
-          : `Address the code review comments in ${res.path}. For each comment, make the requested change in the referenced file, then briefly note what you changed.`;
-      const copied = await copyToClipboard(instructions);
+      const copied = await copyToClipboard(res.content);
       setExported(true);
       setToast(
         copied
           ? {
-              message: 'Instructions copied — paste them into your AI agent.',
+              message: `Exported ${res.count} comment${res.count === 1 ? '' : 's'} — copied to your clipboard.`,
               tone: 'success',
             }
-          : {
-              message: `Clipboard blocked. Open ${res.path} and paste it to your agent.`,
-              tone: 'error',
-            },
+          : { message: `Clipboard blocked. Open ${res.path} and paste it to your agent.`, tone: 'error' },
       );
     } catch (e) {
       setError(String(e));
     }
-  }, []);
+  }, [selectedIds]);
 
   const commentsForFile = useCallback(
     (path: string) => comments.filter((c) => c.file === path),
@@ -300,28 +304,6 @@ export function App() {
             setHead(h);
           }}
         />
-        <input
-          className="file-search"
-          type="search"
-          value={fileQuery}
-          placeholder="Search files…"
-          aria-label="Search files"
-          onChange={(e) => setFileQuery(e.target.value)}
-        />
-        <button
-          className={`toggle${commentedOnly ? ' active' : ''}`}
-          onClick={() => setCommentedOnly((v) => !v)}
-          title="Show only files with comments"
-        >
-          Commented
-        </button>
-        <button
-          className={`toggle${hideGenerated ? ' active' : ''}`}
-          onClick={() => setHideGenerated((v) => !v)}
-          title="Hide generated files (lockfiles, dist/, *.min.js, …)"
-        >
-          Hide generated
-        </button>
         <div className="spacer" />
         <div className="toolset">
           <CodeThemePicker value={codeTheme} onChange={setCodeTheme} />
@@ -336,6 +318,11 @@ export function App() {
           <button
             className={`primary${exported ? ' is-exported' : ''}`}
             onClick={handleExport}
+            title={
+              selectedIds.size
+                ? `Export ${selectedIds.size} selected comment(s)`
+                : 'Export open comments to .prless/review.md'
+            }
           >
             {exported ? (
               <>
@@ -346,8 +333,8 @@ export function App() {
               </>
             ) : (
               <>
-                Export for AI
-                <span className="count-pill">{openCount}</span>
+                {selectedIds.size ? 'Export selected' : 'Export for AI'}
+                <span className="count-pill">{selectedIds.size || openCount}</span>
               </>
             )}
           </button>
@@ -358,8 +345,8 @@ export function App() {
 
       {untracked.length > 0 && (
         <div className="banner warning">
-          {untracked.length} untracked {untracked.length === 1 ? 'file is' : 'files are'} not
-          included in this review. Run <code>git add -N &lt;file&gt;</code> to include{' '}
+          {untracked.length} untracked {untracked.length === 1 ? 'file is' : 'files are'} hidden.
+          Turn on <strong>Showing unstaged + untracked</strong> to include{' '}
           {untracked.length === 1 ? 'it' : 'them'}.
         </div>
       )}
@@ -383,11 +370,48 @@ export function App() {
 
       <div className="layout">
         <aside>
+          <div className="file-controls">
+            <input
+              className="file-search"
+              type="search"
+              value={fileQuery}
+              placeholder="Search files…"
+              aria-label="Search files"
+              onChange={(e) => setFileQuery(e.target.value)}
+            />
+            <div className="file-control-toggles">
+              <button
+                className={`toggle${commentedOnly ? ' active' : ''}`}
+                onClick={() => setCommentedOnly((v) => !v)}
+                title="Show only files with comments"
+              >
+                Commented
+              </button>
+              <button
+                className={`toggle${hideGenerated ? ' active' : ''}`}
+                onClick={() => setHideGenerated((v) => !v)}
+                title="Hide generated files (lockfiles, dist/, *.min.js, …)"
+              >
+                Hide generated
+              </button>
+            </div>
+            {mode === 'working' && (
+              <button
+                className={`toggle${showUnstaged ? ' active' : ''}`}
+                onClick={() => setShowUnstaged((v) => !v)}
+                title="Include unstaged changes and untracked files (off = staged only)"
+              >
+                {showUnstaged ? 'Showing unstaged + untracked' : 'Staged only'}
+              </button>
+            )}
+          </div>
           <FileList files={visibleFiles} comments={comments} />
         </aside>
         <main>
           <OrphanedComments
             comments={orphanComments}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
             onResolve={handleResolve}
             onDelete={handleDelete}
           />
@@ -412,6 +436,8 @@ export function App() {
                   comments={fileComments}
                   collapsedByDefault={collapsedByDefault}
                   collapseReason={generated ? 'Generated file' : large ? 'Large file' : undefined}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
                   onAdd={handleAdd}
                   onAddFile={handleAddFile}
                   onResolve={handleResolve}
