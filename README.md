@@ -126,17 +126,8 @@ large files collapse by default.
 - The handoff is a plain file plus a clipboard copy, so it works with any agent. No MCP,
   no API keys.
 
-### Export options
-
-Next to **Export for AI** you can choose:
-
-- **Profile** — Generic, Claude Code, Codex, or Cursor. Tunes the instruction header and the
-  copy-command buttons.
-- **Format** — Markdown, Checklist (`- [ ]` items), or JSON (`.prless/review.json`) for tooling.
-
-Exports include a summary, are grouped by file, and contain only unresolved comments by
-default. Tick individual comments to **export just those**, and use the **Copy Claude** /
-**Copy Codex** buttons to grab a ready-to-run command for the exported review.
+The exported `review.md` opens with a short summary and groups comments by file. It contains
+only unresolved comments. Tick individual comments to **export just those**.
 
 ## Local-only & privacy
 

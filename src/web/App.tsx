@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseDiff } from 'react-diff-view';
-import type {
-  Comment,
-  DiffMode,
-  DiffSide,
-  ExportFormat,
-  ExportProfile,
-  RefsResponse,
-} from '../shared/types';
+import type { Comment, DiffMode, DiffSide, RefsResponse } from '../shared/types';
 import { api } from './api';
 import {
   anchorKey,
@@ -45,10 +38,7 @@ export function App() {
   const [commentedOnly, setCommentedOnly] = useState(false);
   const [hideGenerated, setHideGenerated] = useState(false);
   const [largeDismissed, setLargeDismissed] = useState(false);
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('markdown');
-  const [exportProfile, setExportProfile] = useState<ExportProfile>('generic');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [reviewFile, setReviewFile] = useState('.prless/review.md');
   const [toast, setToast] = useState<ToastState | null>(null);
   const [error, setError] = useState<string>('');
   const [exported, setExported] = useState(false);
@@ -199,15 +189,12 @@ export function App() {
   const handleExport = useCallback(async () => {
     try {
       const res = await api.exportReview({
-        format: exportFormat,
-        profile: exportProfile,
         commentIds: selectedIds.size ? [...selectedIds] : undefined,
       });
       if (res.count === 0) {
         setToast({ message: 'No comments to export.', tone: 'error' });
         return;
       }
-      setReviewFile(`.prless/${res.format === 'json' ? 'review.json' : 'review.md'}`);
       const copied = await copyToClipboard(res.content);
       setExported(true);
       setToast(
@@ -221,20 +208,7 @@ export function App() {
     } catch (e) {
       setError(String(e));
     }
-  }, [exportFormat, exportProfile, selectedIds]);
-
-  const handleCopyCommand = useCallback(
-    async (profile: 'claude' | 'codex') => {
-      const command = `${profile} "Address the review comments in ${reviewFile}"`;
-      const copied = await copyToClipboard(command);
-      setToast(
-        copied
-          ? { message: `Copied: ${command}`, tone: 'success' }
-          : { message: 'Clipboard blocked — copy the command manually.', tone: 'error' },
-      );
-    },
-    [reviewFile],
-  );
+  }, [selectedIds]);
 
   const commentsForFile = useCallback(
     (path: string) => comments.filter((c) => c.file === path),
@@ -329,28 +303,6 @@ export function App() {
             setHead(h);
           }}
         />
-        <input
-          className="file-search"
-          type="search"
-          value={fileQuery}
-          placeholder="Search files…"
-          aria-label="Search files"
-          onChange={(e) => setFileQuery(e.target.value)}
-        />
-        <button
-          className={`toggle${commentedOnly ? ' active' : ''}`}
-          onClick={() => setCommentedOnly((v) => !v)}
-          title="Show only files with comments"
-        >
-          Commented
-        </button>
-        <button
-          className={`toggle${hideGenerated ? ' active' : ''}`}
-          onClick={() => setHideGenerated((v) => !v)}
-          title="Hide generated files (lockfiles, dist/, *.min.js, …)"
-        >
-          Hide generated
-        </button>
         <div className="spacer" />
         <div className="toolset">
           <CodeThemePicker value={codeTheme} onChange={setCodeTheme} />
@@ -362,33 +314,14 @@ export function App() {
           </button>
           <ThemeToggle theme={appTheme} onToggle={toggleAppTheme} />
           <div className="divider" />
-          <select
-            className="export-select"
-            value={exportProfile}
-            onChange={(e) => setExportProfile(e.target.value as ExportProfile)}
-            title="Agent profile (tunes the instruction header + command)"
-            aria-label="Export profile"
-          >
-            <option value="generic">Generic</option>
-            <option value="claude">Claude Code</option>
-            <option value="codex">Codex</option>
-            <option value="cursor">Cursor</option>
-          </select>
-          <select
-            className="export-select"
-            value={exportFormat}
-            onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
-            title="Export format"
-            aria-label="Export format"
-          >
-            <option value="markdown">Markdown</option>
-            <option value="checklist">Checklist</option>
-            <option value="json">JSON</option>
-          </select>
           <button
             className={`primary${exported ? ' is-exported' : ''}`}
             onClick={handleExport}
-            title={selectedIds.size ? `Export ${selectedIds.size} selected comment(s)` : 'Export all open comments'}
+            title={
+              selectedIds.size
+                ? `Export ${selectedIds.size} selected comment(s)`
+                : 'Export open comments to .prless/review.md'
+            }
           >
             {exported ? (
               <>
@@ -403,12 +336,6 @@ export function App() {
                 <span className="count-pill">{selectedIds.size || openCount}</span>
               </>
             )}
-          </button>
-          <button className="cmd-btn" onClick={() => handleCopyCommand('claude')} title="Copy a Claude Code command for the exported review">
-            ⧉ Claude
-          </button>
-          <button className="cmd-btn" onClick={() => handleCopyCommand('codex')} title="Copy a Codex command for the exported review">
-            ⧉ Codex
           </button>
         </div>
       </header>
@@ -442,6 +369,32 @@ export function App() {
 
       <div className="layout">
         <aside>
+          <div className="file-controls">
+            <input
+              className="file-search"
+              type="search"
+              value={fileQuery}
+              placeholder="Search files…"
+              aria-label="Search files"
+              onChange={(e) => setFileQuery(e.target.value)}
+            />
+            <div className="file-control-toggles">
+              <button
+                className={`toggle${commentedOnly ? ' active' : ''}`}
+                onClick={() => setCommentedOnly((v) => !v)}
+                title="Show only files with comments"
+              >
+                Commented
+              </button>
+              <button
+                className={`toggle${hideGenerated ? ' active' : ''}`}
+                onClick={() => setHideGenerated((v) => !v)}
+                title="Hide generated files (lockfiles, dist/, *.min.js, …)"
+              >
+                Hide generated
+              </button>
+            </div>
+          </div>
           <FileList files={visibleFiles} comments={comments} />
         </aside>
         <main>

@@ -208,10 +208,34 @@ body {
   font-size: 12px;
 }
 
+.file-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-subtle);
+}
+
+.file-control-toggles {
+  display: flex;
+  gap: 6px;
+}
+
+.file-control-toggles .toggle {
+  flex: 1;
+  justify-content: center;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
 .file-search {
   font: inherit;
   padding: 6px 10px;
-  width: 180px;
+  width: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg);
@@ -227,21 +251,6 @@ button.toggle.active {
   background: var(--accent-soft);
   color: var(--accent);
   border-color: var(--accent);
-}
-
-.export-select {
-  font: inherit;
-  font-size: 12.5px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  color: var(--text);
-}
-
-button.cmd-btn {
-  font-size: 12px;
-  padding: 6px 10px;
 }
 
 .select-comment {
