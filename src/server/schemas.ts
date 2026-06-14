@@ -35,6 +35,15 @@ export const PatchCommentSchema = z
     message: 'at least one of body or status is required',
   });
 
+export const ExportOptionsSchema = z
+  .object({
+    format: z.enum(['markdown', 'checklist', 'json']).optional(),
+    profile: z.enum(['generic', 'claude', 'codex', 'cursor']).optional(),
+    includeResolved: z.boolean().optional(),
+    commentIds: z.array(z.string()).optional(),
+  })
+  .default({});
+
 /** Flatten a ZodError into a single human-readable message. */
 export function formatZodError(error: z.ZodError): string {
   return error.issues

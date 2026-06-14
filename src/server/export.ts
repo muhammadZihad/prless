@@ -1,14 +1,43 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Comment } from '../shared/types.js';
+import type { Comment, ExportFormat, ExportOptions, ExportProfile } from '../shared/types.js';
 
-const HEADER = `# Code Review — action required
+const TITLE = '# Code Review — action required';
 
-You are addressing review comments on this repository. For each comment below,
-make the requested change in the referenced file, then briefly note what you changed.
-Line numbers refer to the indicated side of the diff ("new" = current file contents,
-"old" = the version before the change).
-`;
+const BASE_INSTRUCTIONS = `You are addressing line-anchored review comments exported from PRless.
+
+For each comment below:
+1. Locate the file, then find the referenced line or the nearby snippet.
+2. Apply the requested change.
+3. Preserve existing behavior unless the comment explicitly asks for a behavior change.
+4. Do not remove or reformat unrelated code.
+5. After making the changes, summarize what you changed and flag any comment you could not apply.`;
+
+const PROFILE_INTRO: Record<ExportProfile, string> = {
+  generic: '',
+  claude: 'Claude Code: work through every comment below and apply each change.\n\n',
+  codex: 'Codex: work through every comment below and apply each change.\n\n',
+  cursor: 'Cursor: work through every comment below and apply each change.\n\n',
+};
+
+/** Shell command that hands the exported review to a given agent. */
+export function agentCommand(profile: ExportProfile, reviewPath = '.prless/review.md'): string {
+  const instruction = `Address the review comments in ${reviewPath}`;
+  switch (profile) {
+    case 'claude':
+      return `claude "${instruction}"`;
+    case 'codex':
+      return `codex "${instruction}"`;
+    case 'cursor':
+      return `cursor --prompt "${instruction}"`;
+    default:
+      return instruction;
+  }
+}
+
+function header(profile: ExportProfile): string {
+  return `${TITLE}\n\n${PROFILE_INTRO[profile]}${BASE_INSTRUCTIONS}\n`;
+}
 
 /** A markdown note listing untracked files left out of the review, or '' if none. */
 function untrackedNote(untracked: string[]): string {
@@ -32,17 +61,93 @@ function isOrphaned(c: Comment, rawDiff?: string): boolean {
   return !rawDiff.includes(snippet);
 }
 
-/** Render the orphaned-comments section, or '' when there are none. */
-function renderOrphans(orphaned: Comment[]): string {
+export interface RenderContext {
+  options?: ExportOptions;
+  untracked?: string[];
+  rawDiff?: string;
+}
+
+interface Selection {
+  exported: Comment[];
+  resolvedExcluded: number;
+}
+
+/** Apply commentIds + includeResolved filters to the comment pool. */
+function selectComments(comments: Comment[], options: ExportOptions): Selection {
+  let pool = comments;
+  if (options.commentIds && options.commentIds.length) {
+    const ids = new Set(options.commentIds);
+    pool = pool.filter((c) => ids.has(c.id));
+  }
+  const includeResolved = options.includeResolved ?? false;
+  if (includeResolved) {
+    return { exported: pool, resolvedExcluded: 0 };
+  }
+  return {
+    exported: pool.filter((c) => c.status === 'open'),
+    resolvedExcluded: pool.filter((c) => c.status === 'resolved').length,
+  };
+}
+
+/** Group comments by file (sorted), each file's comments ordered by line. */
+function groupByFile(comments: Comment[]): Map<string, Comment[]> {
+  const byFile = new Map<string, Comment[]>();
+  for (const c of comments) {
+    const bucket = byFile.get(c.file) ?? [];
+    bucket.push(c);
+    byFile.set(c.file, bucket);
+  }
+  const sorted = new Map<string, Comment[]>();
+  for (const file of [...byFile.keys()].sort()) {
+    sorted.set(
+      file,
+      byFile
+        .get(file)!
+        .slice()
+        .sort((a, b) => a.line - b.line || a.createdAt.localeCompare(b.createdAt)),
+    );
+  }
+  return sorted;
+}
+
+function renderSummary(
+  open: number,
+  resolvedExcluded: number,
+  files: number,
+  orphaned: number,
+): string {
+  return [
+    '## Summary',
+    '',
+    `- Comments to address: ${open}`,
+    `- Resolved (excluded): ${resolvedExcluded}`,
+    `- Files with comments: ${files}`,
+    `- Orphaned comments: ${orphaned}`,
+  ].join('\n');
+}
+
+function renderItem(c: Comment, checklist: boolean): string {
+  const bullet = checklist ? '- [ ]' : '-';
+  const body = c.body.trim().replace(/\n/g, '\n    ');
+  if (c.scope === 'file') {
+    return `${bullet} **File comment:** ${body}`;
+  }
+  const snippet = c.snippet.trim();
+  const context = snippet ? ` \`${snippet}\`` : '';
+  return `${bullet} **Line ${c.line} (${c.side}):**${context}\n  → ${body}`;
+}
+
+function renderOrphans(orphaned: Comment[], checklist: boolean): string {
   if (orphaned.length === 0) return '';
   const items = orphaned
     .slice()
     .sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line)
     .map((c) => {
+      const bullet = checklist ? '- [ ]' : '-';
       const snippet = c.snippet.trim();
       const context = snippet ? ` \`${snippet}\`` : '';
       const body = c.body.trim().replace(/\n/g, '\n    ');
-      return `- **${c.file}** (line ${c.line}, ${c.side}):${context}\n  → ${body}`;
+      return `${bullet} **${c.file}** (line ${c.line}, ${c.side}):${context}\n  → ${body}`;
     });
   return (
     '## Orphaned Comments\n\n' +
@@ -53,69 +158,101 @@ function renderOrphans(orphaned: Comment[]): string {
 }
 
 /**
- * Render open comments into a deterministic, agent-friendly markdown document,
- * grouped by file and ordered by line. When `rawDiff` is supplied, comments
- * whose snippet is no longer present are split into an Orphaned section.
- * Pure function for easy testing.
+ * Render review comments into a deterministic, agent-friendly markdown document
+ * (or checklist), grouped by file. Pure function for easy testing.
  */
-export function renderReviewMarkdown(
-  comments: Comment[],
-  untracked: string[] = [],
-  rawDiff?: string,
-): string {
-  const open = comments.filter((c) => c.status === 'open');
-  const note = untrackedNote(untracked);
+export function renderReviewMarkdown(comments: Comment[], ctx: RenderContext = {}): string {
+  const options = ctx.options ?? {};
+  const profile = options.profile ?? 'generic';
+  const checklist = options.format === 'checklist';
+  const { exported, resolvedExcluded } = selectComments(comments, options);
+  const note = untrackedNote(ctx.untracked ?? []);
 
-  if (open.length === 0) {
-    return `${HEADER}${note}\n_No open comments._\n`;
+  if (exported.length === 0) {
+    return `${header(profile)}${note}\n_No comments to address._\n`;
   }
 
-  const attached = open.filter((c) => !isOrphaned(c, rawDiff));
-  const orphaned = open.filter((c) => isOrphaned(c, rawDiff));
+  const attached = exported.filter((c) => !isOrphaned(c, ctx.rawDiff));
+  const orphaned = exported.filter((c) => isOrphaned(c, ctx.rawDiff));
+  const byFile = groupByFile(attached);
 
-  const byFile = new Map<string, Comment[]>();
-  for (const c of attached) {
-    const bucket = byFile.get(c.file) ?? [];
-    bucket.push(c);
-    byFile.set(c.file, bucket);
+  const sections: string[] = [
+    renderSummary(exported.length, resolvedExcluded, byFile.size, orphaned.length),
+  ];
+  for (const [file, lines] of byFile) {
+    sections.push(`## ${file}\n\n${lines.map((c) => renderItem(c, checklist)).join('\n\n')}`);
   }
-
-  const sections: string[] = [];
-  for (const file of [...byFile.keys()].sort()) {
-    const lines = byFile
-      .get(file)!
-      .slice()
-      .sort((a, b) => a.line - b.line || a.createdAt.localeCompare(b.createdAt));
-
-    const items = lines.map((c) => {
-      const body = c.body.trim().replace(/\n/g, '\n    ');
-      if (c.scope === 'file') {
-        return `- **File comment:**\n  → ${body}`;
-      }
-      const snippet = c.snippet.trim();
-      const context = snippet ? ` \`${snippet}\`` : '';
-      return `- **Line ${c.line} (${c.side}):**${context}\n  → ${body}`;
-    });
-
-    sections.push(`## ${file}\n\n${items.join('\n\n')}`);
-  }
-
-  const orphanSection = renderOrphans(orphaned);
+  const orphanSection = renderOrphans(orphaned, checklist);
   if (orphanSection) sections.push(orphanSection);
 
-  return `${HEADER}${note}\n${sections.join('\n\n')}\n`;
+  return `${header(profile)}${note}\n${sections.join('\n\n')}\n`;
+}
+
+/** Build the structured JSON export object. `generatedAt` is injected for testability. */
+export function buildReviewJson(
+  comments: Comment[],
+  ctx: RenderContext = {},
+  generatedAt = '',
+): Record<string, unknown> {
+  const options = ctx.options ?? {};
+  const { exported, resolvedExcluded } = selectComments(comments, options);
+  const attached = exported.filter((c) => !isOrphaned(c, ctx.rawDiff));
+  const orphaned = exported.filter((c) => isOrphaned(c, ctx.rawDiff));
+  const byFile = groupByFile(attached);
+
+  const toJson = (c: Comment) => ({
+    id: c.id,
+    file: c.file,
+    line: c.line,
+    side: c.side,
+    scope: c.scope ?? 'line',
+    snippet: c.snippet,
+    body: c.body,
+    status: c.status,
+  });
+
+  return {
+    version: 1,
+    generatedAt,
+    profile: options.profile ?? 'generic',
+    summary: {
+      open: exported.length,
+      resolvedExcluded,
+      files: byFile.size,
+      orphaned: orphaned.length,
+    },
+    // Deterministic order: grouped by file, then line.
+    comments: [...byFile.values()].flat().map(toJson),
+    orphaned: orphaned
+      .slice()
+      .sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line)
+      .map(toJson),
+  };
+}
+
+function fileNameFor(format: ExportFormat): string {
+  return format === 'json' ? 'review.json' : 'review.md';
 }
 
 export async function exportReview(
   repoRoot: string,
   comments: Comment[],
-  untracked: string[] = [],
-  rawDiff?: string,
-): Promise<{ path: string; count: number; content: string }> {
+  ctx: RenderContext = {},
+  generatedAt = '',
+): Promise<{ path: string; count: number; format: ExportFormat; content: string }> {
+  const options = ctx.options ?? {};
+  const format: ExportFormat = options.format ?? 'markdown';
   const dir = path.join(repoRoot, '.prless');
-  const file = path.join(dir, 'review.md');
-  const content = renderReviewMarkdown(comments, untracked, rawDiff);
+  const file = path.join(dir, fileNameFor(format));
+
+  const content =
+    format === 'json'
+      ? `${JSON.stringify(buildReviewJson(comments, ctx, generatedAt), null, 2)}\n`
+      : renderReviewMarkdown(comments, ctx);
+
   await mkdir(dir, { recursive: true });
   await writeFile(file, content, 'utf8');
-  return { path: file, count: comments.filter((c) => c.status === 'open').length, content };
+
+  const { exported } = selectComments(comments, options);
+  return { path: file, count: exported.length, format, content };
 }

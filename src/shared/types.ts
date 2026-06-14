@@ -67,8 +67,19 @@ export interface DiffResponse {
   ignored: string[]; // files hidden by .prlessignore
 }
 
+export type ExportProfile = 'generic' | 'claude' | 'codex' | 'cursor';
+export type ExportFormat = 'markdown' | 'checklist' | 'json';
+
+export interface ExportOptions {
+  format?: ExportFormat; // default 'markdown'
+  profile?: ExportProfile; // default 'generic'
+  includeResolved?: boolean; // default false — only open comments
+  commentIds?: string[]; // if set, export only these comments
+}
+
 export interface ExportResponse {
   path: string;
   count: number;
-  content: string; // the rendered review.md — copied to the clipboard for pasting to an agent
+  format: ExportFormat;
+  content: string; // the rendered review — copied to the clipboard for pasting to an agent
 }
