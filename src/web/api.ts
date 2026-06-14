@@ -3,6 +3,7 @@ import type {
   CommentPatch,
   DiffMode,
   DiffResponse,
+  ExportOptions,
   ExportResponse,
   NewComment,
   RefsResponse,
@@ -73,7 +74,13 @@ export const api = {
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   },
 
-  async exportReview(): Promise<ExportResponse> {
-    return json(await fetch('/api/export', { method: 'POST' }));
+  async exportReview(options: ExportOptions = {}): Promise<ExportResponse> {
+    return json(
+      await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(options),
+      }),
+    );
   },
 };

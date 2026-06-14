@@ -37,6 +37,8 @@ interface Props {
   onDelete: (id: string) => void;
   collapsedByDefault?: boolean; // generated/large files start collapsed
   collapseReason?: string; // why it's collapsed (shown in the placeholder)
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 export function DiffView({
@@ -49,6 +51,8 @@ export function DiffView({
   onDelete,
   collapsedByDefault = false,
   collapseReason,
+  selectedIds,
+  onToggleSelect,
 }: Props) {
   const path = filePath(file);
   // The line the user clicked, with the context captured for a durable anchor.
@@ -117,6 +121,8 @@ export function DiffView({
         <CommentThread
           comments={threadComments}
           driftedIds={driftedIds}
+          selectedIds={selectedIds}
+          onToggleSelect={onToggleSelect}
           autoFocus={activeAnchor?.key === aKey}
           onAdd={(body) =>
             onAdd(
@@ -138,7 +144,18 @@ export function DiffView({
       );
     }
     return result;
-  }, [commentsByAnchor, activeAnchor, changeKeyIndex, driftedIds, path, onAdd, onResolve, onDelete]);
+  }, [
+    commentsByAnchor,
+    activeAnchor,
+    changeKeyIndex,
+    driftedIds,
+    selectedIds,
+    onToggleSelect,
+    path,
+    onAdd,
+    onResolve,
+    onDelete,
+  ]);
 
   const openCount = comments.filter((c) => c.status === 'open').length;
 
@@ -164,6 +181,8 @@ export function DiffView({
             showComposer={showFileComposer}
             autoFocus={showFileComposer}
             placeholder="Comment on this file…"
+            selectedIds={selectedIds}
+            onToggleSelect={onToggleSelect}
             onAdd={(body) => {
               onAddFile(path, body);
               setShowFileComposer(false);

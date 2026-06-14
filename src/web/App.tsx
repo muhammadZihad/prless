@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseDiff } from 'react-diff-view';
-import type { Comment, DiffMode, DiffSide, RefsResponse } from '../shared/types';
+import type {
+  Comment,
+  DiffMode,
+  DiffSide,
+  ExportFormat,
+  ExportProfile,
+  RefsResponse,
+} from '../shared/types';
 import { api } from './api';
 import {
   anchorKey,
@@ -38,6 +45,10 @@ export function App() {
   const [commentedOnly, setCommentedOnly] = useState(false);
   const [hideGenerated, setHideGenerated] = useState(false);
   const [largeDismissed, setLargeDismissed] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('markdown');
+  const [exportProfile, setExportProfile] = useState<ExportProfile>('generic');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [reviewFile, setReviewFile] = useState('.prless/review.md');
   const [toast, setToast] = useState<ToastState | null>(null);
   const [error, setError] = useState<string>('');
   const [exported, setExported] = useState(false);
@@ -176,36 +187,54 @@ export function App() {
     }
   }, []);
 
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const handleExport = useCallback(async () => {
     try {
-      const res = await api.exportReview();
+      const res = await api.exportReview({
+        format: exportFormat,
+        profile: exportProfile,
+        commentIds: selectedIds.size ? [...selectedIds] : undefined,
+      });
       if (res.count === 0) {
-        setToast({ message: 'No open comments to export.', tone: 'error' });
+        setToast({ message: 'No comments to export.', tone: 'error' });
         return;
       }
-      // Fall back to a path-based instruction if an older server build didn't
-      // return the rendered content, so we never copy a literal "undefined".
-      const instructions =
-        res.content && res.content.trim()
-          ? res.content
-          : `Address the code review comments in ${res.path}. For each comment, make the requested change in the referenced file, then briefly note what you changed.`;
-      const copied = await copyToClipboard(instructions);
+      setReviewFile(`.prless/${res.format === 'json' ? 'review.json' : 'review.md'}`);
+      const copied = await copyToClipboard(res.content);
       setExported(true);
       setToast(
         copied
           ? {
-              message: 'Instructions copied — paste them into your AI agent.',
+              message: `Exported ${res.count} comment${res.count === 1 ? '' : 's'} — copied to your clipboard.`,
               tone: 'success',
             }
-          : {
-              message: `Clipboard blocked. Open ${res.path} and paste it to your agent.`,
-              tone: 'error',
-            },
+          : { message: `Clipboard blocked. Open ${res.path} and paste it to your agent.`, tone: 'error' },
       );
     } catch (e) {
       setError(String(e));
     }
-  }, []);
+  }, [exportFormat, exportProfile, selectedIds]);
+
+  const handleCopyCommand = useCallback(
+    async (profile: 'claude' | 'codex') => {
+      const command = `${profile} "Address the review comments in ${reviewFile}"`;
+      const copied = await copyToClipboard(command);
+      setToast(
+        copied
+          ? { message: `Copied: ${command}`, tone: 'success' }
+          : { message: 'Clipboard blocked — copy the command manually.', tone: 'error' },
+      );
+    },
+    [reviewFile],
+  );
 
   const commentsForFile = useCallback(
     (path: string) => comments.filter((c) => c.file === path),
@@ -333,9 +362,33 @@ export function App() {
           </button>
           <ThemeToggle theme={appTheme} onToggle={toggleAppTheme} />
           <div className="divider" />
+          <select
+            className="export-select"
+            value={exportProfile}
+            onChange={(e) => setExportProfile(e.target.value as ExportProfile)}
+            title="Agent profile (tunes the instruction header + command)"
+            aria-label="Export profile"
+          >
+            <option value="generic">Generic</option>
+            <option value="claude">Claude Code</option>
+            <option value="codex">Codex</option>
+            <option value="cursor">Cursor</option>
+          </select>
+          <select
+            className="export-select"
+            value={exportFormat}
+            onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+            title="Export format"
+            aria-label="Export format"
+          >
+            <option value="markdown">Markdown</option>
+            <option value="checklist">Checklist</option>
+            <option value="json">JSON</option>
+          </select>
           <button
             className={`primary${exported ? ' is-exported' : ''}`}
             onClick={handleExport}
+            title={selectedIds.size ? `Export ${selectedIds.size} selected comment(s)` : 'Export all open comments'}
           >
             {exported ? (
               <>
@@ -346,10 +399,16 @@ export function App() {
               </>
             ) : (
               <>
-                Export for AI
-                <span className="count-pill">{openCount}</span>
+                {selectedIds.size ? 'Export selected' : 'Export for AI'}
+                <span className="count-pill">{selectedIds.size || openCount}</span>
               </>
             )}
+          </button>
+          <button className="cmd-btn" onClick={() => handleCopyCommand('claude')} title="Copy a Claude Code command for the exported review">
+            ⧉ Claude
+          </button>
+          <button className="cmd-btn" onClick={() => handleCopyCommand('codex')} title="Copy a Codex command for the exported review">
+            ⧉ Codex
           </button>
         </div>
       </header>
@@ -388,6 +447,8 @@ export function App() {
         <main>
           <OrphanedComments
             comments={orphanComments}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
             onResolve={handleResolve}
             onDelete={handleDelete}
           />
@@ -412,6 +473,8 @@ export function App() {
                   comments={fileComments}
                   collapsedByDefault={collapsedByDefault}
                   collapseReason={generated ? 'Generated file' : large ? 'Large file' : undefined}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
                   onAdd={handleAdd}
                   onAddFile={handleAddFile}
                   onResolve={handleResolve}

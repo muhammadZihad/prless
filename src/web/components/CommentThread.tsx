@@ -10,6 +10,8 @@ interface Props {
   driftedIds?: Set<string>;
   showComposer?: boolean;
   placeholder?: string;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 export function CommentThread({
@@ -21,6 +23,8 @@ export function CommentThread({
   driftedIds,
   showComposer = true,
   placeholder = 'Leave a comment…',
+  selectedIds,
+  onToggleSelect,
 }: Props) {
   const [draft, setDraft] = useState('');
 
@@ -37,6 +41,15 @@ export function CommentThread({
         <div key={c.id} className={`review-comment ${c.status === 'resolved' ? 'resolved' : ''}`}>
           <div className="comment-body">{c.body}</div>
           <div className="comment-actions">
+            {onToggleSelect && (
+              <label className="select-comment" title="Include in export">
+                <input
+                  type="checkbox"
+                  checked={selectedIds?.has(c.id) ?? false}
+                  onChange={() => onToggleSelect(c.id)}
+                />
+              </label>
+            )}
             <span className={`status-chip ${c.status}`}>{c.status}</span>
             {driftedIds?.has(c.id) && (
               <span className="drift-badge" title="The code on this line changed since the comment was written.">
