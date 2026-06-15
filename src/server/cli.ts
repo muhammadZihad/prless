@@ -6,9 +6,24 @@ import { fileURLToPath } from 'node:url';
 import open from 'open';
 import { buildServer } from './index.js';
 import { assertGitRepo, createGit, GitError } from './git.js';
+import { checkForUpdate } from './update.js';
 
 const require = createRequire(import.meta.url);
-const pkg = require('../../package.json') as { version: string };
+const pkg = require('../../package.json') as { version: string; name: string };
+
+/** Best-effort, non-blocking notice when a newer version is on npm. */
+function notifyIfOutdated(): void {
+  checkForUpdate(pkg.version)
+    .then((latest) => {
+      if (latest) {
+        console.log(`\nprless: a new version is available — ${pkg.version} → ${latest}`);
+        console.log(`  update with: npm install -g ${pkg.name}@latest`);
+      }
+    })
+    .catch(() => {
+      /* update checks are best-effort */
+    });
+}
 
 /** A user-facing CLI error: printed as a clean message, no stack trace. */
 export class CliError extends Error {}
@@ -121,6 +136,9 @@ async function serve(
       console.log(`prless: open ${url} in your browser`);
     });
   }
+
+  // Tell the user (once, in the background) if a newer version is published.
+  notifyIfOutdated();
 }
 
 async function runOpen(opts: OpenOptions): Promise<void> {

@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Startup check that notifies when a newer version is published, with the update command.
+  Best-effort, sends no data, and can be disabled with `PRLESS_NO_UPDATE_CHECK=1`.
+
 ### Fixed
 
 - Globally-installed `prless` did nothing: the "invoked directly" check compared the symlinked
