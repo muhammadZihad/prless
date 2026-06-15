@@ -512,6 +512,11 @@ main {
   background: var(--bg-hover);
 }
 
+.file-list a.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .file-list-path {
   flex: 1;
   overflow: hidden;

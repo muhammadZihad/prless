@@ -39,6 +39,8 @@ export function App() {
   const [hideGenerated, setHideGenerated] = useState(false);
   const [showUnstaged, setShowUnstaged] = useState(true);
   const [largeDismissed, setLargeDismissed] = useState(false);
+  const [singleFile, setSingleFile] = useState(false);
+  const [activeFile, setActiveFile] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState | null>(null);
   const [error, setError] = useState<string>('');
@@ -255,6 +257,19 @@ export function App() {
     });
   }, [files, fileQuery, hideGenerated, commentedOnly, commentedFiles]);
 
+  // In single-file mode, render only the chosen file (default to the first visible one).
+  const effectiveActive = useMemo(() => {
+    if (!singleFile || visibleFiles.length === 0) return null;
+    const stillVisible = visibleFiles.some((f) => filePath(f) === activeFile);
+    return stillVisible ? activeFile : filePath(visibleFiles[0]);
+  }, [singleFile, visibleFiles, activeFile]);
+
+  const filesToRender = useMemo(
+    () =>
+      effectiveActive ? visibleFiles.filter((f) => filePath(f) === effectiveActive) : visibleFiles,
+    [effectiveActive, visibleFiles],
+  );
+
   // Warn when the whole diff is large enough to be sluggish.
   const stats = useMemo(() => diffStats(files), [files]);
   const isLargeDiff = stats.changes > 10_000 || stats.files > 75;
@@ -404,8 +419,20 @@ export function App() {
                 {showUnstaged ? 'Showing unstaged + untracked' : 'Staged only'}
               </button>
             )}
+            <button
+              className={`toggle${singleFile ? ' active' : ''}`}
+              onClick={() => setSingleFile((v) => !v)}
+              title="Render only the file selected in the sidebar"
+            >
+              {singleFile ? 'Single file' : 'All files'}
+            </button>
           </div>
-          <FileList files={visibleFiles} comments={comments} />
+          <FileList
+            files={visibleFiles}
+            comments={comments}
+            activeFile={effectiveActive}
+            onSelect={singleFile ? setActiveFile : undefined}
+          />
         </aside>
         <main>
           <OrphanedComments
@@ -415,14 +442,14 @@ export function App() {
             onResolve={handleResolve}
             onDelete={handleDelete}
           />
-          {visibleFiles.length === 0 ? (
+          {filesToRender.length === 0 ? (
             <div className="empty">
               {files.length === 0
                 ? 'No changes to review for this selection.'
                 : 'No files match the current filters.'}
             </div>
           ) : (
-            visibleFiles.map((file) => {
+            filesToRender.map((file) => {
               const path = filePath(file);
               const fileComments = commentsForFile(path);
               const generated = isGeneratedFile(path);

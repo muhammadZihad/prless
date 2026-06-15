@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Single-file view: a sidebar toggle to render only the file selected in the sidebar instead
+  of all changed files at once, so you don't scroll past everything.
+
 ## [0.6.0] - 2026-06-15
 
 ### Added
