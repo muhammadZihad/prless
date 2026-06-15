@@ -20,6 +20,7 @@ export const CreateCommentSchema = z
     file: z.string().min(1),
     scope: z.enum(['line', 'file']).optional(),
     line: z.number().int().positive().optional(),
+    endLine: z.number().int().positive().optional(),
     side: z.enum(['old', 'new']).optional(),
     body: z.string().min(1),
     snippet: z.string().optional(),
