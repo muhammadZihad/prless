@@ -49,6 +49,23 @@ describe('CommentStore', () => {
     expect(await store.remove(created.id)).toBe(false);
   });
 
+  it('stores a multi-line range comment', async () => {
+    const c = await store.add({
+      file: 'a.ts',
+      line: 12,
+      endLine: 18,
+      side: 'new',
+      body: 'refactor this block',
+      snippet: 'line12\nline13',
+    });
+    expect(c.line).toBe(12);
+    expect(c.endLine).toBe(18);
+
+    // A single-line comment (endLine == line) stays single.
+    const single = await store.add({ file: 'a.ts', line: 5, endLine: 5, side: 'new', body: 'x' });
+    expect(single.endLine).toBeUndefined();
+  });
+
   it('creates a file-scoped comment without a line anchor', async () => {
     const c = await store.add({ file: 'a.ts', body: 'split this module', scope: 'file' });
     expect(c.scope).toBe('file');
