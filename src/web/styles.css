@@ -1117,3 +1117,55 @@ kbd {
 .theme-tile-check {
   color: var(--accent);
 }
+
+/* ───────────────────────── Update notice (sidebar bottom) ───────────────────────── */
+
+.update-notice {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklch, var(--accent-soft) 60%, var(--bg-subtle));
+  backdrop-filter: blur(4px);
+}
+
+.update-notice-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+}
+
+.update-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.update-cmd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.update-copy {
+  justify-content: center;
+  font-size: 12px;
+  padding: 5px 8px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: transparent;
+}
+
+.update-copy:hover {
+  background: var(--accent-hover);
+  border-color: transparent;
+}

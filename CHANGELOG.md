@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format is based on
 
 - Resizable sidebar: drag the divider between the file list and the diff to shrink/widen it
   (double-click to reset). The width is remembered across reloads.
+- A sticky notice at the bottom of the sidebar when a newer version is published, with a
+  one-click "Copy update command" (`npm install -g …@latest`).
 
 ### Changed
 

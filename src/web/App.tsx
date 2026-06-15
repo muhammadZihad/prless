@@ -30,6 +30,7 @@ import { RefPicker } from './components/RefPicker';
 import { RepoPicker } from './components/RepoPicker';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { ThemeModal } from './components/ThemeModal';
+import { UpdateNotice } from './components/UpdateNotice';
 import { CodeThemeButton, ThemeToggle, ViewToggle } from './components/Controls';
 import { Toast, type ToastState } from './components/Toast';
 import { usePersistedState } from './settings';
@@ -62,6 +63,7 @@ export function App() {
   const [bindings, setBindings] = useState<Bindings>(loadBindings);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [update, setUpdate] = useState<{ latest: string; command: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const { appTheme, codeTheme, setCodeTheme, toggleAppTheme } = useTheme();
 
@@ -90,6 +92,18 @@ export function App() {
   useEffect(() => {
     document.title = repo ? `${repo.name} · PRless` : 'PRless';
   }, [repo]);
+
+  // Check npm for a newer version (best-effort; server respects PRLESS_NO_UPDATE_CHECK).
+  useEffect(() => {
+    api
+      .getUpdate()
+      .then((u) => {
+        if (u.latest) setUpdate({ latest: u.latest, command: `npm install -g ${u.name}@latest` });
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+  }, []);
 
   // Load refs + comments whenever the active repo changes.
   useEffect(() => {
@@ -516,6 +530,20 @@ export function App() {
             activeFile={effectiveActive}
             onSelect={singleFile ? setActiveFile : undefined}
           />
+          {update && (
+            <UpdateNotice
+              latest={update.latest}
+              command={update.command}
+              onCopy={async () => {
+                const ok = await copyToClipboard(update.command);
+                setToast(
+                  ok
+                    ? { message: 'Update command copied to your clipboard.', tone: 'success' }
+                    : { message: `Run: ${update.command}`, tone: 'error' },
+                );
+              }}
+            />
+          )}
         </aside>
         <div
           className={`resizer${resizing ? ' dragging' : ''}`}

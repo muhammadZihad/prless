@@ -1,4 +1,14 @@
+import { createRequire } from 'node:module';
+
 const REGISTRY_URL = 'https://registry.npmjs.org/@muhammad_zihad%2Fprless/latest';
+
+const pkg = createRequire(import.meta.url)('../../package.json') as {
+  version: string;
+  name: string;
+};
+
+export const VERSION = pkg.version;
+export const PACKAGE_NAME = pkg.name;
 
 /** True when version `a` is strictly newer than `b` (compares major.minor.patch). */
 export function isNewer(a: string, b: string): boolean {

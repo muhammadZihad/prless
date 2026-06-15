@@ -68,6 +68,12 @@ export interface DiffResponse {
   ignored: string[]; // files hidden by .prlessignore
 }
 
+export interface UpdateInfo {
+  current: string;
+  latest: string | null; // set only when a newer version is published
+  name: string; // npm package name, for the install command
+}
+
 export type ExportProfile = 'generic' | 'claude' | 'codex' | 'cursor';
 export type ExportFormat = 'markdown' | 'checklist' | 'json';
 

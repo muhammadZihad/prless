@@ -7,6 +7,7 @@ import type {
   ExportResponse,
   NewComment,
   RefsResponse,
+  UpdateInfo,
 } from '../shared/types';
 
 async function json<T>(res: Response): Promise<T> {
@@ -25,6 +26,10 @@ export interface RepoInfo {
 export const api = {
   async getRepo(): Promise<RepoInfo> {
     return json(await fetch('/api/repo'));
+  },
+
+  async getUpdate(): Promise<UpdateInfo> {
+    return json(await fetch('/api/update'));
   },
 
   /** Open the native folder dialog. Returns the chosen repo, or null if cancelled. */

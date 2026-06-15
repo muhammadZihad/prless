@@ -3,6 +3,7 @@ import { exportReview } from './export.js';
 import { getDiff, getRefs, GitError } from './git.js';
 import { loadIgnore } from './ignore.js';
 import { pickFolder, PickerUnavailableError } from './picker.js';
+import { checkForUpdate, PACKAGE_NAME, VERSION } from './update.js';
 import {
   CreateCommentSchema,
   DiffQuerySchema,
@@ -31,6 +32,11 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
   app.get('/api/repo', async () => {
     const repo = ctx.session.current;
     return repo ? { repoRoot: repo.repoRoot, name: repo.name } : { repoRoot: null, name: null };
+  });
+
+  app.get('/api/update', async () => {
+    const latest = await checkForUpdate(VERSION); // null if up to date / offline / opted out
+    return { current: VERSION, latest, name: PACKAGE_NAME };
   });
 
   app.post('/api/repo/pick', async (_request, reply) => {
