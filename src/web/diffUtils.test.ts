@@ -29,6 +29,8 @@ describe('isGeneratedFile', () => {
       'coverage/lcov.info',
       'bundle.js.map',
       '__snapshots__/x.snap',
+      '.prless/comments.json',
+      '.prless/review.md',
     ]) {
       expect(isGeneratedFile(p)).toBe(true);
     }

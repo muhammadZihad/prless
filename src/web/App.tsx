@@ -9,6 +9,7 @@ import {
   diffStats,
   filePath,
   isGeneratedFile,
+  isInternalPath,
   type FileDiff,
 } from './diffUtils';
 import { useTheme } from './theme';
@@ -22,12 +23,14 @@ import {
   type Bindings,
 } from './shortcuts';
 import { DiffView, type AddAnchor } from './components/DiffView';
+import { DiffFilters } from './components/DiffFilters';
 import { FileList } from './components/FileList';
 import { OrphanedComments } from './components/OrphanedComments';
 import { RefPicker } from './components/RefPicker';
 import { RepoPicker } from './components/RepoPicker';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { ThemeModal } from './components/ThemeModal';
+import { UpdateNotice } from './components/UpdateNotice';
 import { CodeThemeButton, ThemeToggle, ViewToggle } from './components/Controls';
 import { Toast, type ToastState } from './components/Toast';
 import { usePersistedState } from './settings';
@@ -41,14 +44,14 @@ export function App() {
   const [base, setBase] = useState('');
   const [head, setHead] = useState('');
   const [raw, setRaw] = useState('');
-  const [untracked, setUntracked] = useState<string[]>([]);
   const [ignored, setIgnored] = useState<string[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   // Remembered across reloads.
   const [viewType, setViewType] = usePersistedState<'unified' | 'split'>('prless:view-type', 'split');
   const [hideGenerated, setHideGenerated] = usePersistedState('prless:hide-generated', false);
-  const [showUnstaged, setShowUnstaged] = usePersistedState('prless:show-unstaged', true);
   const [singleFile, setSingleFile] = usePersistedState('prless:single-file', false);
+  const [sidebarWidth, setSidebarWidth] = usePersistedState('prless:sidebar-width', 290);
+  const [resizing, setResizing] = useState(false);
   const [fileQuery, setFileQuery] = useState('');
   const [commentedOnly, setCommentedOnly] = useState(false);
   const [largeDismissed, setLargeDismissed] = useState(false);
@@ -60,13 +63,15 @@ export function App() {
   const [bindings, setBindings] = useState<Bindings>(loadBindings);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [update, setUpdate] = useState<{ latest: string; command: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const { appTheme, codeTheme, setCodeTheme, toggleAppTheme } = useTheme();
 
   const files = useMemo<FileDiff[]>(() => {
     if (!raw.trim()) return [];
     try {
-      return parseDiff(raw);
+      // Never show PRless's own .prless/ files, even if the diff includes them.
+      return parseDiff(raw).filter((f) => !isInternalPath(filePath(f)));
     } catch {
       return [];
     }
@@ -87,6 +92,18 @@ export function App() {
   useEffect(() => {
     document.title = repo ? `${repo.name} · PRless` : 'PRless';
   }, [repo]);
+
+  // Check npm for a newer version (best-effort; server respects PRLESS_NO_UPDATE_CHECK).
+  useEffect(() => {
+    api
+      .getUpdate()
+      .then((u) => {
+        if (u.latest) setUpdate({ latest: u.latest, command: `npm install -g ${u.name}@latest` });
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+  }, []);
 
   // Load refs + comments whenever the active repo changes.
   useEffect(() => {
@@ -122,22 +139,19 @@ export function App() {
     }
     if (mode === 'compare' && (!base || !head)) {
       setRaw('');
-      setUntracked([]);
       setIgnored([]);
       return;
     }
     try {
-      const res = await api.getDiff(mode, base, head, showUnstaged);
+      const res = await api.getDiff(mode, base, head);
       setRaw(res.raw);
-      setUntracked(res.untracked ?? []);
       setIgnored(res.ignored ?? []);
     } catch (e) {
       setError(String(e));
       setRaw('');
-      setUntracked([]);
       setIgnored([]);
     }
-  }, [repo, mode, base, head, showUnstaged]);
+  }, [repo, mode, base, head]);
 
   useEffect(() => {
     loadDiff();
@@ -339,6 +353,29 @@ export function App() {
     setBindings(next);
   }, []);
 
+  // Drag the divider to resize the sidebar (clamped). Persisted across reloads.
+  const startResize = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = e.currentTarget.parentElement?.firstElementChild?.getBoundingClientRect().width ?? 290;
+    setResizing(true);
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    const onMove = (ev: PointerEvent) => {
+      const next = Math.min(Math.max(startWidth + (ev.clientX - startX), 180), 600);
+      setSidebarWidth(next);
+    };
+    const onUp = () => {
+      setResizing(false);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, []);
+
   useShortcuts(
     bindings,
     {
@@ -446,14 +483,6 @@ export function App() {
 
       {error && <div className="banner error">{error}</div>}
 
-      {untracked.length > 0 && (
-        <div className="banner warning">
-          {untracked.length} untracked {untracked.length === 1 ? 'file is' : 'files are'} hidden.
-          Turn on <strong>Showing unstaged + untracked</strong> to include{' '}
-          {untracked.length === 1 ? 'it' : 'them'}.
-        </div>
-      )}
-
       {ignored.length > 0 && (
         <div className="banner info">
           {ignored.length} {ignored.length === 1 ? 'file' : 'files'} hidden by{' '}
@@ -471,7 +500,7 @@ export function App() {
         </div>
       )}
 
-      <div className="layout">
+      <div className="layout" style={{ gridTemplateColumns: `${sidebarWidth}px 6px 1fr` }}>
         <aside>
           <div className="file-controls">
             <input
@@ -486,38 +515,14 @@ export function App() {
                 if (e.key === 'Escape') e.currentTarget.blur();
               }}
             />
-            <div className="file-control-toggles">
-              <button
-                className={`toggle${commentedOnly ? ' active' : ''}`}
-                onClick={() => setCommentedOnly((v) => !v)}
-                title="Show only files with comments"
-              >
-                Commented
-              </button>
-              <button
-                className={`toggle${hideGenerated ? ' active' : ''}`}
-                onClick={() => setHideGenerated((v) => !v)}
-                title="Hide generated files (lockfiles, dist/, *.min.js, …)"
-              >
-                Hide generated
-              </button>
-            </div>
-            {mode === 'working' && (
-              <button
-                className={`toggle${showUnstaged ? ' active' : ''}`}
-                onClick={() => setShowUnstaged((v) => !v)}
-                title="Include unstaged changes and untracked files (off = staged only)"
-              >
-                {showUnstaged ? 'Showing unstaged + untracked' : 'Staged only'}
-              </button>
-            )}
-            <button
-              className={`toggle${singleFile ? ' active' : ''}`}
-              onClick={() => setSingleFile((v) => !v)}
-              title="Render only the file selected in the sidebar"
-            >
-              {singleFile ? 'Single file' : 'All files'}
-            </button>
+            <DiffFilters
+              commentedOnly={commentedOnly}
+              onToggleCommented={() => setCommentedOnly((v) => !v)}
+              hideGenerated={hideGenerated}
+              onToggleHideGenerated={() => setHideGenerated((v) => !v)}
+              singleFile={singleFile}
+              onToggleSingleFile={() => setSingleFile((v) => !v)}
+            />
           </div>
           <FileList
             files={visibleFiles}
@@ -525,7 +530,30 @@ export function App() {
             activeFile={effectiveActive}
             onSelect={singleFile ? setActiveFile : undefined}
           />
+          {update && (
+            <UpdateNotice
+              latest={update.latest}
+              command={update.command}
+              onCopy={async () => {
+                const ok = await copyToClipboard(update.command);
+                setToast(
+                  ok
+                    ? { message: 'Update command copied to your clipboard.', tone: 'success' }
+                    : { message: `Run: ${update.command}`, tone: 'error' },
+                );
+              }}
+            />
+          )}
         </aside>
+        <div
+          className={`resizer${resizing ? ' dragging' : ''}`}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize sidebar"
+          onPointerDown={startResize}
+          onDoubleClick={() => setSidebarWidth(290)}
+          title="Drag to resize · double-click to reset"
+        />
         <main>
           <OrphanedComments
             comments={orphanComments}

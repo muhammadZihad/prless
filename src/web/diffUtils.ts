@@ -57,12 +57,18 @@ const GENERATED_PATTERNS = [
   /\.min\.(js|css)$/,
   /\.map$/,
   /(^|\/)(dist|build|coverage|node_modules|vendor|out)\//,
+  /(^|\/)\.prless\//, // PRless's own comments.json / review.md / etc.
   /\.snap$/,
 ];
 
 /** Heuristic: is this a generated/lockfile/minified path worth collapsing? */
 export function isGeneratedFile(path: string): boolean {
   return GENERATED_PATTERNS.some((re) => re.test(path));
+}
+
+/** PRless's own data dir — never shown in the file list or diff. */
+export function isInternalPath(path: string): boolean {
+  return /(^|\/)\.prless\//.test(path);
 }
 
 /** Total added + removed lines in a file diff. */

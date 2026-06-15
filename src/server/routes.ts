@@ -3,6 +3,7 @@ import { exportReview } from './export.js';
 import { getDiff, getRefs, GitError } from './git.js';
 import { loadIgnore } from './ignore.js';
 import { pickFolder, PickerUnavailableError } from './picker.js';
+import { checkForUpdate, PACKAGE_NAME, VERSION } from './update.js';
 import {
   CreateCommentSchema,
   DiffQuerySchema,
@@ -31,6 +32,11 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
   app.get('/api/repo', async () => {
     const repo = ctx.session.current;
     return repo ? { repoRoot: repo.repoRoot, name: repo.name } : { repoRoot: null, name: null };
+  });
+
+  app.get('/api/update', async () => {
+    const latest = await checkForUpdate(VERSION); // null if up to date / offline / opted out
+    return { current: VERSION, latest, name: PACKAGE_NAME };
   });
 
   app.post('/api/repo/pick', async (_request, reply) => {
@@ -66,7 +72,7 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
     if (!parsed.success) {
       return reply.code(400).send({ error: formatZodError(parsed.error) });
     }
-    const { mode, base, head, unstaged } = parsed.data;
+    const { mode, base, head } = parsed.data;
     try {
       const ig = await loadIgnore(repo.repoRoot);
       return await getDiff(repo.git, {
@@ -76,7 +82,6 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
         ig,
         paths: ctx.paths,
         repoRoot: repo.repoRoot,
-        includeUnstaged: unstaged,
       });
     } catch (err) {
       if (err instanceof GitError) {
@@ -150,7 +155,7 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
     return exportReview(
       repo.repoRoot,
       comments,
-      { options: parsed.data, untracked: diff.untracked, rawDiff: diff.raw },
+      { options: parsed.data, rawDiff: diff.raw },
       new Date().toISOString(),
     );
   });

@@ -7,6 +7,7 @@ import type {
   ExportResponse,
   NewComment,
   RefsResponse,
+  UpdateInfo,
 } from '../shared/types';
 
 async function json<T>(res: Response): Promise<T> {
@@ -27,6 +28,10 @@ export const api = {
     return json(await fetch('/api/repo'));
   },
 
+  async getUpdate(): Promise<UpdateInfo> {
+    return json(await fetch('/api/update'));
+  },
+
   /** Open the native folder dialog. Returns the chosen repo, or null if cancelled. */
   async pickRepo(): Promise<RepoInfo | null> {
     const res = await fetch('/api/repo/pick', { method: 'POST' });
@@ -38,16 +43,10 @@ export const api = {
     return json(await fetch('/api/refs'));
   },
 
-  async getDiff(
-    mode: DiffMode,
-    base?: string,
-    head?: string,
-    includeUnstaged = true,
-  ): Promise<DiffResponse> {
+  async getDiff(mode: DiffMode, base?: string, head?: string): Promise<DiffResponse> {
     const params = new URLSearchParams({ mode });
     if (base) params.set('base', base);
     if (head) params.set('head', head);
-    if (!includeUnstaged) params.set('unstaged', 'false');
     return json(await fetch(`/api/diff?${params.toString()}`));
   },
 

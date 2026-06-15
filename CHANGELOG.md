@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Resizable sidebar: drag the divider between the file list and the diff to shrink/widen it
+  (double-click to reset). The width is remembered across reloads.
+- A sticky notice at the bottom of the sidebar when a newer version is published, with a
+  one-click "Copy update command" (`npm install -g …@latest`).
+
+### Changed
+
+- Decluttered the sidebar filters into a compact row of icon toggles (Commented, Generated,
+  one-file/all-files) under the search box.
+- The working diff now always includes staged + unstaged changes and untracked files
+  (excluding gitignored). Removed the "unstaged + untracked / staged only" toggle.
+- PRless's own `.prless/` files (comments.json, review.md) are always excluded from the diff,
+  so commenting no longer adds noise to your own review.
+
 ## [0.7.0] - 2026-06-16
 
 ### Added

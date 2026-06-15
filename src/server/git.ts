@@ -3,7 +3,7 @@ import path from 'node:path';
 import { simpleGit, type SimpleGit } from 'simple-git';
 import type { Ignore } from 'ignore';
 import type { DiffMode, DiffResponse, RefsResponse } from '../shared/types.js';
-import { filterDiff } from './ignore.js';
+import { filterDiff, isInternalPath } from './ignore.js';
 
 export class GitError extends Error {}
 
@@ -85,20 +85,17 @@ export interface DiffParams {
   ig?: Ignore | null;
   paths?: string[];
   repoRoot?: string; // required to render untracked file contents
-  /** Working mode: include unstaged changes + render untracked files (default true). */
-  includeUnstaged?: boolean;
 }
 
 /**
  * Produce a unified diff for the requested mode.
- * - working: uncommitted changes — staged + unstaged vs HEAD when includeUnstaged,
- *   else staged only. Untracked files are rendered as synthetic new-file diffs
- *   when includeUnstaged (and a repoRoot is given).
+ * - working: all uncommitted changes (staged + unstaged) vs HEAD, plus untracked
+ *   files rendered as synthetic new-file diffs (excluding gitignored files).
  * - staged: staged changes only
  * - compare: `git diff <base> <head>` (two-dot)
  */
 export async function getDiff(git: SimpleGit, params: DiffParams): Promise<DiffResponse> {
-  const { mode, base, head, ig = null, paths = [], repoRoot, includeUnstaged = true } = params;
+  const { mode, base, head, ig = null, paths = [], repoRoot } = params;
   let args: string[];
 
   switch (mode) {
@@ -113,8 +110,7 @@ export async function getDiff(git: SimpleGit, params: DiffParams): Promise<DiffR
       break;
     case 'working':
     default:
-      // Hiding unstaged changes leaves the staged-only diff.
-      args = includeUnstaged ? ['HEAD'] : ['--staged'];
+      args = ['HEAD'];
       break;
   }
 
@@ -124,26 +120,19 @@ export async function getDiff(git: SimpleGit, params: DiffParams): Promise<DiffR
   // Stable, machine-friendly diff output.
   let rawAll = await git.diff(['--no-color', ...args]);
 
-  // Untracked files only matter in working mode.
-  let untracked: string[] = [];
-  if (mode === 'working') {
+  // Working mode always renders untracked files (minus gitignored) as new-file diffs.
+  if (mode === 'working' && repoRoot) {
     const all = await getUntrackedFiles(git, paths);
-    const visible = ig ? all.filter((f) => !ig.ignores(f)) : all;
-    if (includeUnstaged && repoRoot) {
-      // Render their contents into the diff instead of just warning.
-      const synth = (
-        await Promise.all(visible.map((f) => syntheticUntrackedDiff(repoRoot, f)))
-      ).filter((s) => s.length > 0);
-      if (synth.length) {
-        if (rawAll && !rawAll.endsWith('\n')) rawAll += '\n';
-        rawAll += synth.join('');
-      }
-    } else {
-      // Staged-only (or no repoRoot to read): note them as not shown.
-      untracked = visible;
+    const visible = all.filter((f) => !isInternalPath(f) && !(ig && ig.ignores(f)));
+    const synth = (
+      await Promise.all(visible.map((f) => syntheticUntrackedDiff(repoRoot, f)))
+    ).filter((s) => s.length > 0);
+    if (synth.length) {
+      if (rawAll && !rawAll.endsWith('\n')) rawAll += '\n';
+      rawAll += synth.join('');
     }
   }
 
   const { raw, ignored } = filterDiff(rawAll, ig);
-  return { mode, base, head, raw, untracked, ignored };
+  return { mode, base, head, raw, ignored };
 }

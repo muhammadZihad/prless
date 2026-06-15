@@ -23,12 +23,18 @@ function sectionPath(section: string): string | null {
   return m ? m[2] : null;
 }
 
+/** PRless's own data dir — never shown in the diff (it changes as you review). */
+export function isInternalPath(path: string): boolean {
+  return /(^|\/)\.prless\//.test(path);
+}
+
 /**
- * Drop whole-file sections from a unified diff whose path matches `.prlessignore`.
- * Returns the filtered diff text and the list of paths that were removed.
+ * Drop whole-file sections from a unified diff: PRless's own `.prless/` files
+ * always (silently), plus anything matching `.prlessignore` (reported).
+ * Returns the filtered diff text and the list of .prlessignore-matched paths.
  */
 export function filterDiff(raw: string, ig: Ignore | null): { raw: string; ignored: string[] } {
-  if (!ig || !raw.trim()) return { raw, ignored: [] };
+  if (!raw.trim()) return { raw, ignored: [] };
 
   const sections: string[] = [];
   let current = '';
@@ -46,7 +52,8 @@ export function filterDiff(raw: string, ig: Ignore | null): { raw: string; ignor
   const ignored: string[] = [];
   for (const section of sections) {
     const p = sectionPath(section);
-    if (p && ig.ignores(p)) ignored.push(p);
+    if (p && isInternalPath(p)) continue; // always drop, don't report
+    if (p && ig?.ignores(p)) ignored.push(p);
     else kept.push(section);
   }
   return { raw: kept.join('\n'), ignored };

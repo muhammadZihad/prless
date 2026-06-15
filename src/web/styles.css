@@ -220,16 +220,31 @@ body {
   background: var(--bg-subtle);
 }
 
-.file-control-toggles {
+.diff-filters {
   display: flex;
+  align-items: center;
   gap: 6px;
 }
 
-.file-control-toggles .toggle {
-  flex: 1;
+.filter-toggle {
+  width: 32px;
+  height: 32px;
+  padding: 0;
   justify-content: center;
-  font-size: 12px;
-  padding: 5px 8px;
+  color: var(--text-muted);
+}
+
+.filter-toggle.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.diff-filters-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 2px;
+  background: var(--border);
 }
 
 .file-search {
@@ -450,7 +465,7 @@ button:disabled {
 .layout {
   flex: 1;
   display: grid;
-  grid-template-columns: 290px 1fr;
+  grid-template-columns: 290px 1fr; /* sidebar width is overridden inline */
   overflow: hidden;
 }
 
@@ -458,6 +473,30 @@ aside {
   border-right: 1px solid var(--border);
   overflow-y: auto;
   background: var(--bg-subtle);
+  min-width: 0;
+}
+
+/* Draggable divider between the sidebar and the diff. */
+.resizer {
+  position: relative;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+  margin-left: -3px; /* sit over the aside border, widen the hit area */
+  z-index: 3;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 2px;
+  border-radius: 2px;
+  transition: background 0.12s var(--ease);
+}
+
+.resizer:hover::after,
+.resizer.dragging::after {
+  background: var(--accent);
 }
 
 main {
@@ -1077,4 +1116,56 @@ kbd {
 
 .theme-tile-check {
   color: var(--accent);
+}
+
+/* ───────────────────────── Update notice (sidebar bottom) ───────────────────────── */
+
+.update-notice {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklch, var(--accent-soft) 60%, var(--bg-subtle));
+  backdrop-filter: blur(4px);
+}
+
+.update-notice-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+}
+
+.update-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.update-cmd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.update-copy {
+  justify-content: center;
+  font-size: 12px;
+  padding: 5px 8px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: transparent;
+}
+
+.update-copy:hover {
+  background: var(--accent-hover);
+  border-color: transparent;
 }
