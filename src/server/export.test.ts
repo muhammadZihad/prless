@@ -109,6 +109,14 @@ describe('renderReviewMarkdown', () => {
     expect(md.indexOf('attached note')).toBeLessThan(orphanIdx);
   });
 
+  it('renders a multi-line range as "Lines X–Y"', () => {
+    const md = renderReviewMarkdown([
+      comment({ line: 12, endLine: 18, side: 'new', body: 'extract a helper' }),
+    ]);
+    expect(md).toContain('**Lines 12–18 (new):**');
+    expect(md).toContain('extract a helper');
+  });
+
   it('renders file-level comments with a marker', () => {
     const md = renderReviewMarkdown([
       comment({ scope: 'file', file: 'src/a.ts', body: 'split this module', snippet: '' }),

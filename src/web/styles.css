@@ -622,6 +622,8 @@ main {
 .diff-gutter {
   color: var(--code-gutter-fg);
   transition: background 0.1s var(--ease);
+  cursor: pointer;
+  user-select: none; /* dragging across line numbers selects a range, not text */
 }
 
 .diff-gutter:hover {
@@ -634,6 +636,12 @@ main {
   margin-left: 0.4ch;
   color: var(--accent);
   font-weight: 700;
+}
+
+/* Lines selected for a (possibly multi-line) comment. */
+.diff-gutter-selected,
+.diff-code-selected {
+  background: var(--accent-soft) !important;
 }
 
 /* ───────────────────────── Comment thread (line widget) ───────────────────────── */
@@ -810,6 +818,12 @@ main {
 }
 
 .hint {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.composer-hint {
+  margin: 6px 0 0;
   color: var(--text-faint);
   font-size: 11px;
 }
