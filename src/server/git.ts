@@ -3,7 +3,7 @@ import path from 'node:path';
 import { simpleGit, type SimpleGit } from 'simple-git';
 import type { Ignore } from 'ignore';
 import type { DiffMode, DiffResponse, RefsResponse } from '../shared/types.js';
-import { filterDiff } from './ignore.js';
+import { filterDiff, isInternalPath } from './ignore.js';
 
 export class GitError extends Error {}
 
@@ -123,7 +123,7 @@ export async function getDiff(git: SimpleGit, params: DiffParams): Promise<DiffR
   // Working mode always renders untracked files (minus gitignored) as new-file diffs.
   if (mode === 'working' && repoRoot) {
     const all = await getUntrackedFiles(git, paths);
-    const visible = ig ? all.filter((f) => !ig.ignores(f)) : all;
+    const visible = all.filter((f) => !isInternalPath(f) && !(ig && ig.ignores(f)));
     const synth = (
       await Promise.all(visible.map((f) => syntheticUntrackedDiff(repoRoot, f)))
     ).filter((s) => s.length > 0);

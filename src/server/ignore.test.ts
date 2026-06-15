@@ -56,9 +56,18 @@ describe('filterDiff', () => {
     expect(raw).not.toContain('dist/bundle.min.js');
   });
 
-  it('is a no-op without an ignore matcher', () => {
-    const { raw, ignored } = filterDiff(RAW, null);
-    expect(ignored).toEqual([]);
-    expect(raw).toBe(RAW);
+  it('always drops .prless/ files (silently, even without a matcher)', () => {
+    const withPrless = `${RAW}diff --git a/.prless/comments.json b/.prless/comments.json
+index 5..6 100644
+--- a/.prless/comments.json
++++ b/.prless/comments.json
+@@ -1 +1 @@
+-{}
++{"version":1}
+`;
+    const { raw, ignored } = filterDiff(withPrless, null);
+    expect(raw).not.toContain('.prless/comments.json');
+    expect(raw).toContain('src/a.ts'); // other files untouched
+    expect(ignored).toEqual([]); // not reported as a .prlessignore match
   });
 });

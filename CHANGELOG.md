@@ -17,7 +17,8 @@ All notable changes to this project are documented here. The format is based on
   one-file/all-files) under the search box.
 - The working diff now always includes staged + unstaged changes and untracked files
   (excluding gitignored). Removed the "unstaged + untracked / staged only" toggle.
-- "Hide generated" now also hides files under the `.prless/` folder.
+- PRless's own `.prless/` files (comments.json, review.md) are always excluded from the diff,
+  so commenting no longer adds noise to your own review.
 
 ## [0.7.0] - 2026-06-16
 
