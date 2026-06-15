@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-15
+
 ### Added
 
 - Startup check that notifies when a newer version is published, with the update command.
