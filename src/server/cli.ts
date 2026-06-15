@@ -1,13 +1,29 @@
 #!/usr/bin/env node
 import path from 'node:path';
+import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import open from 'open';
 import { buildServer } from './index.js';
 import { assertGitRepo, createGit, GitError } from './git.js';
+import { checkForUpdate } from './update.js';
 
 const require = createRequire(import.meta.url);
-const pkg = require('../../package.json') as { version: string };
+const pkg = require('../../package.json') as { version: string; name: string };
+
+/** Best-effort, non-blocking notice when a newer version is on npm. */
+function notifyIfOutdated(): void {
+  checkForUpdate(pkg.version)
+    .then((latest) => {
+      if (latest) {
+        console.log(`\nprless: a new version is available — ${pkg.version} → ${latest}`);
+        console.log(`  update with: npm install -g ${pkg.name}@latest`);
+      }
+    })
+    .catch(() => {
+      /* update checks are best-effort */
+    });
+}
 
 /** A user-facing CLI error: printed as a clean message, no stack trace. */
 export class CliError extends Error {}
@@ -120,6 +136,9 @@ async function serve(
       console.log(`prless: open ${url} in your browser`);
     });
   }
+
+  // Tell the user (once, in the background) if a newer version is published.
+  notifyIfOutdated();
 }
 
 async function runOpen(opts: OpenOptions): Promise<void> {
@@ -179,9 +198,19 @@ async function main(): Promise<void> {
 }
 
 // Only run as a CLI when invoked directly, not when imported (e.g. in tests).
-const invokedDirectly =
-  process.argv[1] !== undefined &&
-  import.meta.url === pathToFileURL(process.argv[1]).href;
+// Compare real paths so a globally-installed symlinked bin still matches its
+// resolved module path (argv[1] is the symlink; import.meta.url is the target).
+function isInvokedDirectly(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+const invokedDirectly = isInvokedDirectly();
 
 if (invokedDirectly) {
   main().catch((err) => {

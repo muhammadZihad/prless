@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-15
+
+### Added
+
+- Startup check that notifies when a newer version is published, with the update command.
+  Best-effort, sends no data, and can be disabled with `PRLESS_NO_UPDATE_CHECK=1`.
+
+### Fixed
+
+- Globally-installed `prless` did nothing: the "invoked directly" check compared the symlinked
+  bin path against the resolved module path. It now compares real paths, so the npm global bin
+  runs correctly.
+
 ### Changed
 
 - CI: bump `actions/checkout` and `actions/setup-node` to v5 (Node 24 runtime) to clear the

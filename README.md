@@ -54,6 +54,19 @@ PowerShell shims automatically). Prefer not to install globally? Run it on deman
 npx @muhammad_zihad/prless open .
 ```
 
+## Updating
+
+PRless checks npm on startup and tells you when a newer version is published. To update:
+
+```bash
+npm install -g @muhammad_zihad/prless@latest
+```
+
+(With `npx`, you always get the latest — append `@latest` to be sure: `npx @muhammad_zihad/prless@latest`.)
+
+The update check is a single best-effort request for the latest version number and sends no
+data. Disable it by setting `PRLESS_NO_UPDATE_CHECK=1`.
+
 ## Quick start
 
 ```bash
@@ -132,11 +145,13 @@ only unresolved comments. Tick individual comments to **export just those**.
 ## Local-only & privacy
 
 PRless runs entirely on your machine. It does not send your code, diffs, or comments to
-any external server, and it makes no network calls of its own.
+any external server.
 
 - The server binds to `127.0.0.1` only — it is not reachable from your network.
 - Everything is stored under `.prless/` in your repo: `comments.json` (your comments) and
   `review.md` (the exported handoff).
+- The only outbound request is the startup version check (latest version number from npm,
+  no data sent) — disable it with `PRLESS_NO_UPDATE_CHECK=1`.
 - The only thing that leaves PRless is what *you* paste into your AI agent.
 
 ## Configuration
