@@ -27,8 +27,10 @@ import { OrphanedComments } from './components/OrphanedComments';
 import { RefPicker } from './components/RefPicker';
 import { RepoPicker } from './components/RepoPicker';
 import { ShortcutsModal } from './components/ShortcutsModal';
-import { CodeThemePicker, ThemeToggle } from './components/Controls';
+import { ThemeModal } from './components/ThemeModal';
+import { CodeThemeButton, ThemeToggle, ViewToggle } from './components/Controls';
 import { Toast, type ToastState } from './components/Toast';
+import { usePersistedState } from './settings';
 
 export function App() {
   const [repo, setRepo] = useState<{ repoRoot: string; name: string } | null>(null);
@@ -42,13 +44,14 @@ export function App() {
   const [untracked, setUntracked] = useState<string[]>([]);
   const [ignored, setIgnored] = useState<string[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [viewType, setViewType] = useState<'unified' | 'split'>('split');
+  // Remembered across reloads.
+  const [viewType, setViewType] = usePersistedState<'unified' | 'split'>('prless:view-type', 'split');
+  const [hideGenerated, setHideGenerated] = usePersistedState('prless:hide-generated', false);
+  const [showUnstaged, setShowUnstaged] = usePersistedState('prless:show-unstaged', true);
+  const [singleFile, setSingleFile] = usePersistedState('prless:single-file', false);
   const [fileQuery, setFileQuery] = useState('');
   const [commentedOnly, setCommentedOnly] = useState(false);
-  const [hideGenerated, setHideGenerated] = useState(false);
-  const [showUnstaged, setShowUnstaged] = useState(true);
   const [largeDismissed, setLargeDismissed] = useState(false);
-  const [singleFile, setSingleFile] = useState(false);
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -56,6 +59,7 @@ export function App() {
   const [exported, setExported] = useState(false);
   const [bindings, setBindings] = useState<Bindings>(loadBindings);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const { appTheme, codeTheme, setCodeTheme, toggleAppTheme } = useTheme();
 
@@ -389,13 +393,11 @@ export function App() {
         />
         <div className="spacer" />
         <div className="toolset">
-          <CodeThemePicker value={codeTheme} onChange={setCodeTheme} />
-          <button
-            onClick={() => setViewType((v) => (v === 'split' ? 'unified' : 'split'))}
-            title="Toggle split / unified view"
-          >
-            {viewType === 'split' ? 'Split' : 'Unified'}
-          </button>
+          <CodeThemeButton value={codeTheme} onClick={() => setThemeOpen(true)} />
+          <ViewToggle
+            viewType={viewType}
+            onToggle={() => setViewType(viewType === 'split' ? 'unified' : 'split')}
+          />
           <ThemeToggle theme={appTheme} onToggle={toggleAppTheme} />
           <button className="icon" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
             ⌘
@@ -550,6 +552,15 @@ export function App() {
           )}
         </main>
       </div>
+
+      {themeOpen && (
+        <ThemeModal
+          value={codeTheme}
+          appTheme={appTheme}
+          onSelect={setCodeTheme}
+          onClose={() => setThemeOpen(false)}
+        />
+      )}
 
       {shortcutsOpen && (
         <ShortcutsModal

@@ -13,8 +13,19 @@ export const CODE_THEMES: CodeThemeOption[] = [
   { id: 'dracula', label: 'Dracula' },
   { id: 'nord', label: 'Nord' },
   { id: 'monokai', label: 'Monokai' },
+  { id: 'tokyo-night', label: 'Tokyo Night' },
+  { id: 'catppuccin-mocha', label: 'Catppuccin Mocha' },
+  { id: 'gruvbox-dark', label: 'Gruvbox Dark' },
+  { id: 'night-owl', label: 'Night Owl' },
+  { id: 'ayu-dark', label: 'Ayu Dark' },
   { id: 'solarized-light', label: 'Solarized Light' },
+  { id: 'solarized-dark', label: 'Solarized Dark' },
 ];
+
+/** Display label for a theme id (falls back to the id). */
+export function codeThemeLabel(id: CodeThemeId): string {
+  return CODE_THEMES.find((t) => t.id === id)?.label ?? id;
+}
 
 /**
  * Map a file path's extension to a refractor language present in the common

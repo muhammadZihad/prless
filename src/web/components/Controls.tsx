@@ -1,4 +1,4 @@
-import { CODE_THEMES } from '../codeThemes';
+import { codeThemeLabel } from '../codeThemes';
 import type { AppTheme, CodeThemeId } from '../theme';
 
 export function ThemeToggle({ theme, onToggle }: { theme: AppTheme; onToggle: () => void }) {
@@ -26,27 +26,51 @@ export function ThemeToggle({ theme, onToggle }: { theme: AppTheme; onToggle: ()
   );
 }
 
-export function CodeThemePicker({
-  value,
-  onChange,
+/** Toggle between split and unified diff layouts. Icon + tooltip, no text label. */
+export function ViewToggle({
+  viewType,
+  onToggle,
 }: {
-  value: CodeThemeId;
-  onChange: (id: CodeThemeId) => void;
+  viewType: 'unified' | 'split';
+  onToggle: () => void;
 }) {
+  const split = viewType === 'split';
   return (
-    <label className="field" title="Syntax highlighting theme">
-      <select
-        className="select"
-        value={value}
-        aria-label="Syntax highlighting theme"
-        onChange={(e) => onChange(e.target.value as CodeThemeId)}
-      >
-        {CODE_THEMES.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <button
+      className="icon"
+      onClick={onToggle}
+      title={`${split ? 'Unified' : 'Split'} view`}
+      aria-label={`Switch to ${split ? 'unified' : 'split'} view`}
+    >
+      {split ? (
+        // two side-by-side panes
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="7.5" height="16" rx="1.5" />
+          <rect x="13.5" y="4" width="7.5" height="16" rx="1.5" />
+        </svg>
+      ) : (
+        // stacked rows
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="1.5" />
+          <path d="M3 10h18M3 14h18" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+/** Opens the theme modal; the button label shows the current syntax theme. */
+export function CodeThemeButton({ value, onClick }: { value: CodeThemeId; onClick: () => void }) {
+  return (
+    <button className="theme-button" onClick={onClick} title="Choose a syntax theme">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <circle cx="13.5" cy="6.5" r="1.6" />
+        <circle cx="17" cy="11" r="1.6" />
+        <circle cx="8" cy="6.5" r="1.6" />
+        <circle cx="6" cy="11.5" r="1.6" />
+        <path d="M12 3a9 9 0 0 0 0 18 1.8 1.8 0 0 0 1.8-1.8c0-1 .8-1.7 1.7-1.7H17a4 4 0 0 0 4-4 9 9 0 0 0-9-10.5z" />
+      </svg>
+      {codeThemeLabel(value)}
+    </button>
   );
 }

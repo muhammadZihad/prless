@@ -20,6 +20,12 @@ All notable changes to this project are documented here. The format is based on
 - Keyboard shortcuts for navigation and most toolbar actions (e.g. `j`/`k` next/previous file,
   `mod+]`/`mod+[` split/unified, `/` search, `e` export). Press `?` for a help modal that lists
   and lets you **rebind** any shortcut; custom bindings are saved per browser.
+- Syntax theme picker is now a modal with live previews, plus more themes (Tokyo Night,
+  Catppuccin Mocha, Gruvbox Dark, Night Owl, Ayu Dark, Solarized Dark). The toolbar button
+  shows the current theme name.
+- Split/unified view is now an icon toggle with a tooltip.
+- Remembers your preferences across reloads: split/unified view, syntax theme, light/dark,
+  single-file vs all-files, and the hide-generated / unstaged toggles.
 
 ## [0.6.0] - 2026-06-15
 
