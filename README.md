@@ -32,12 +32,20 @@ keys. The whole loop stays on your machine.
 
 ## Features
 
-- 🧩 **GitHub-style diff view** for any local git repo (working tree, staged, or branch compare).
-- 💬 **Inline comments** anchored to specific lines, with resolve / reopen / delete.
-- 🤖 **One-click AI handoff** — copies agent-ready instructions to your clipboard and writes `.prless/review.md`.
-- 🎨 **Light & dark themes** plus selectable syntax themes (GitHub, Dracula, Nord, One Dark, Monokai, Solarized).
-- 🪶 **Token-savvy** — resolved comments stay on disk but are excluded from the AI export.
-- 🖥️ **Cross-platform** — macOS, Linux, and Windows, with bundled offline fonts.
+- 🧩 **GitHub-style diff view** for any local git repo — working tree, staged, or branch
+  compare; split or unified layout.
+- 💬 **Inline comments** anchored to exact lines, plus **multi-line range comments** (drag the
+  line numbers) and **whole-file comments** — resolve / reopen / delete.
+- 🧭 **Durable comments** — anchored with surrounding context, with drift ("code changed") and
+  orphaned-comment detection as the agent rewrites the code.
+- 🤖 **One-click AI handoff** — copies agent-ready instructions to your clipboard and writes
+  `.prless/review.md`; export everything or just the comments you select.
+- 🔍 **Built for big diffs** — file search, single-file view, "commented only" / "hide
+  generated" filters, `.prlessignore`, path scoping, and auto-collapse of generated/large files.
+- ⌨️ **Keyboard-driven** — shortcuts for navigation and most actions, rebindable from a help modal.
+- 🎨 **12+ syntax themes** in a live-preview modal, light & dark app themes; preferences persist.
+- 🖥️ **Local-only & cross-platform** — macOS, Linux, Windows; binds to `127.0.0.1`, no accounts,
+  no API keys.
 
 ## Installation
 
@@ -139,7 +147,9 @@ large files collapse by default.
                 comments  └───────────┘              └─────────────────┘
 ```
 
-- Comments persist in `.prless/comments.json` in your repo. Add `.prless/` to `.gitignore`.
+- Comments persist in `.prless/comments.json` in your repo. PRless never shows its own
+  `.prless/` files in the diff, and you can add `.prless/` to `.gitignore` to keep them
+  out of commits.
 - `.prless/review.md` groups every **open** comment by file, with the target line and the
   requested change. Resolved comments are kept in the JSON but left out of the export, so
   the agent never spends tokens on them.
@@ -172,6 +182,8 @@ single-file vs all-files, and the filter toggles all persist across reloads.
   Dark, and Solarized Light/Dark. The diff renders as a self-contained editor surface, so any
   code theme looks right regardless of the app theme.
 - **View** — split or unified (icon toggle in the toolbar).
+- **Layout** — drag the divider to resize the sidebar, and switch between all-files and a
+  single-file view to skip the scrolling on large diffs.
 - **Keyboard shortcuts** — `j` / `k` to move between files, `mod+]` / `mod+[` for split /
   unified, `/` to search, `f` single-file view, `e` export, and more. Press `?` for a help
   modal that lists every shortcut and lets you rebind them (saved per browser).
@@ -184,7 +196,7 @@ cd prless
 npm install        # builds automatically via the prepare script
 
 npm run dev        # Vite UI on :5174 (proxying /api) + API on :4100 with reload
-npm test           # vitest: cli, git, comments, export, schemas, e2e
+npm test           # vitest: server + web unit tests and an end-to-end suite
 npm run typecheck
 npm run build      # bundle the web app and compile the server into dist/
 ```

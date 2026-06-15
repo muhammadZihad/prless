@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-16
+
+First stable release. PRless is a local, GitHub-style code-review tool that hands
+line-anchored feedback to AI agents — no remote, no PR, no API keys.
+
 ### Added
 
 - Resizable sidebar: drag the divider between the file list and the diff to shrink/widen it
@@ -21,6 +26,7 @@ All notable changes to this project are documented here. The format is based on
   (excluding gitignored). Removed the "unstaged + untracked / staged only" toggle.
 - PRless's own `.prless/` files (comments.json, review.md) are always excluded from the diff,
   so commenting no longer adds noise to your own review.
+- Refreshed the README (features, configuration, and "how it works") to match the current tool.
 
 ## [0.7.0] - 2026-06-16
 
