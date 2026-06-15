@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from 'node:path';
+import net from 'node:net';
 import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -107,27 +108,56 @@ export function parseOpenArgs(rest: string[]): OpenOptions {
   };
 }
 
+const MAX_PORT_ATTEMPTS = 10;
+
+/** Resolve true if a port can be bound on 127.0.0.1. */
+function portFree(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.once('error', () => resolve(false));
+    probe.once('listening', () => probe.close(() => resolve(true)));
+    probe.listen(port, '127.0.0.1');
+  });
+}
+
+/** First free port in [start, start+MAX_PORT_ATTEMPTS), or null if all are taken. */
+async function findFreePort(start: number): Promise<number | null> {
+  for (let port = start; port < start + MAX_PORT_ATTEMPTS; port++) {
+    if (await portFree(port)) return port;
+  }
+  return null;
+}
+
 /** Listen, then report and open the browser. Shared by repo and no-repo modes. */
 async function serve(
   app: Awaited<ReturnType<typeof buildServer>>,
   flags: ServeFlags,
   repoRoot?: string,
 ): Promise<void> {
+  const port = await findFreePort(flags.port);
+  if (port === null) {
+    throw new CliError(
+      `Ports ${flags.port}–${flags.port + MAX_PORT_ATTEMPTS - 1} are all in use.\n\n` +
+        `Close another prless (or whatever is using them), or pick a port:\n` +
+        `  prless --port <number>`,
+    );
+  }
+
   try {
-    await app.listen({ port: flags.port, host: '127.0.0.1' });
+    await app.listen({ port, host: '127.0.0.1' });
   } catch (err) {
     if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'EADDRINUSE') {
-      throw new CliError(
-        `Port ${flags.port} is already in use.\n\nTry:\n  prless --port ${flags.port + 1}`,
-      );
+      // Lost a race for the port between probing and listening.
+      throw new CliError(`Port ${port} was taken just before starting. Try again.`);
     }
     throw err;
   }
 
-  const url = flags.dev ? `http://localhost:5174` : `http://localhost:${flags.port}`;
+  const url = flags.dev ? `http://localhost:5174` : `http://localhost:${port}`;
   if (repoRoot) console.log(`prless: reviewing ${repoRoot}`);
   else console.log('prless: no repository selected — choose a project in the browser');
-  console.log(`prless: serving ${flags.dev ? 'API' : 'UI'} on http://localhost:${flags.port}`);
+  if (port !== flags.port) console.log(`prless: port ${flags.port} was busy, using ${port}`);
+  console.log(`prless: serving ${flags.dev ? 'API' : 'UI'} on http://localhost:${port}`);
   if (flags.dev) console.log(`prless: open the Vite dev server at ${url}`);
 
   if (!flags.dev && !flags.noOpen) {

@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Auto-select a free port: if the chosen port is busy, prless tries the next ones (up to 10)
+  and serves on the first free one, with a clear message if all are taken.
+
 ## [0.6.0] - 2026-06-15
 
 ### Added
