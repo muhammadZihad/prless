@@ -161,6 +161,9 @@ any external server.
   Solarized Light. The diff renders as a self-contained editor surface, so any code theme
   looks right regardless of the app theme.
 - **View** — split or unified.
+- **Keyboard shortcuts** — `j` / `k` to move between files, `mod+]` / `mod+[` for split /
+  unified, `/` to search, `f` single-file view, `e` export, and more. Press `?` for a help
+  modal that lists every shortcut and lets you rebind them (saved per browser).
 
 ## Development
 

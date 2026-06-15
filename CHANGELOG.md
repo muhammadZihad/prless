@@ -10,6 +10,9 @@ All notable changes to this project are documented here. The format is based on
 
 - Single-file view: a sidebar toggle to render only the file selected in the sidebar instead
   of all changed files at once, so you don't scroll past everything.
+- Keyboard shortcuts for navigation and most toolbar actions (e.g. `j`/`k` next/previous file,
+  `mod+]`/`mod+[` split/unified, `/` search, `e` export). Press `?` for a help modal that lists
+  and lets you **rebind** any shortcut; custom bindings are saved per browser.
 
 ## [0.6.0] - 2026-06-15
 

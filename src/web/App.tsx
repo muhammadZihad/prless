@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseDiff } from 'react-diff-view';
 import type { Comment, DiffMode, DiffSide, RefsResponse } from '../shared/types';
 import { api } from './api';
@@ -13,11 +13,20 @@ import {
 } from './diffUtils';
 import { useTheme } from './theme';
 import { copyToClipboard } from './clipboard';
+import {
+  defaultBindings,
+  loadBindings,
+  saveBindings,
+  useShortcuts,
+  type ActionId,
+  type Bindings,
+} from './shortcuts';
 import { DiffView, type AddAnchor } from './components/DiffView';
 import { FileList } from './components/FileList';
 import { OrphanedComments } from './components/OrphanedComments';
 import { RefPicker } from './components/RefPicker';
 import { RepoPicker } from './components/RepoPicker';
+import { ShortcutsModal } from './components/ShortcutsModal';
 import { CodeThemePicker, ThemeToggle } from './components/Controls';
 import { Toast, type ToastState } from './components/Toast';
 
@@ -45,6 +54,9 @@ export function App() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [error, setError] = useState<string>('');
   const [exported, setExported] = useState(false);
+  const [bindings, setBindings] = useState<Bindings>(loadBindings);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const { appTheme, codeTheme, setCodeTheme, toggleAppTheme } = useTheme();
 
   const files = useMemo<FileDiff[]>(() => {
@@ -270,6 +282,54 @@ export function App() {
     [effectiveActive, visibleFiles],
   );
 
+  // j/k navigation: move the active file and bring it into view.
+  const moveFile = useCallback(
+    (delta: number) => {
+      const paths = visibleFiles.map(filePath);
+      if (paths.length === 0) return;
+      const current = (singleFile ? effectiveActive : activeFile) ?? paths[0];
+      const idx = paths.indexOf(current);
+      const next = paths[(((idx === -1 ? 0 : idx) + delta) % paths.length + paths.length) % paths.length];
+      setActiveFile(next);
+      requestAnimationFrame(() => {
+        document.getElementById(`file-${next}`)?.scrollIntoView({ block: 'start' });
+      });
+    },
+    [visibleFiles, singleFile, effectiveActive, activeFile],
+  );
+
+  const rebind = useCallback((id: ActionId, combo: string) => {
+    setBindings((prev) => {
+      const next = { ...prev, [id]: combo };
+      saveBindings(next);
+      return next;
+    });
+  }, []);
+
+  const resetBindings = useCallback(() => {
+    const next = defaultBindings();
+    saveBindings(next);
+    setBindings(next);
+  }, []);
+
+  useShortcuts(
+    bindings,
+    {
+      nextFile: () => moveFile(1),
+      prevFile: () => moveFile(-1),
+      splitView: () => setViewType('split'),
+      unifiedView: () => setViewType('unified'),
+      toggleSingleFile: () => setSingleFile((v) => !v),
+      focusSearch: () => searchRef.current?.focus(),
+      toggleCommented: () => setCommentedOnly((v) => !v),
+      toggleHideGenerated: () => setHideGenerated((v) => !v),
+      toggleTheme: () => toggleAppTheme(),
+      exportReview: () => void handleExport(),
+      help: () => setShortcutsOpen(true),
+    },
+    !shortcutsOpen,
+  );
+
   // Warn when the whole diff is large enough to be sluggish.
   const stats = useMemo(() => diffStats(files), [files]);
   const isLargeDiff = stats.changes > 10_000 || stats.files > 75;
@@ -329,6 +389,9 @@ export function App() {
             {viewType === 'split' ? 'Split' : 'Unified'}
           </button>
           <ThemeToggle theme={appTheme} onToggle={toggleAppTheme} />
+          <button className="icon" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+            ⌘
+          </button>
           <div className="divider" />
           <button
             className={`primary${exported ? ' is-exported' : ''}`}
@@ -387,12 +450,16 @@ export function App() {
         <aside>
           <div className="file-controls">
             <input
+              ref={searchRef}
               className="file-search"
               type="search"
               value={fileQuery}
               placeholder="Search files…"
               aria-label="Search files"
               onChange={(e) => setFileQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') e.currentTarget.blur();
+              }}
             />
             <div className="file-control-toggles">
               <button
@@ -475,6 +542,15 @@ export function App() {
           )}
         </main>
       </div>
+
+      {shortcutsOpen && (
+        <ShortcutsModal
+          bindings={bindings}
+          onRebind={rebind}
+          onReset={resetBindings}
+          onClose={() => setShortcutsOpen(false)}
+        />
+      )}
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
