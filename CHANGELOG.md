@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Multi-line range comments: click a line, shift-click another on the same side to select a
+  block, and leave one comment for the whole range (rendered as "Lines X–Y" in the export).
+
 ## [0.6.0] - 2026-06-15
 
 ### Added

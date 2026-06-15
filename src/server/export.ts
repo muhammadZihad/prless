@@ -58,7 +58,10 @@ function untrackedNote(untracked: string[]): string {
 function isOrphaned(c: Comment, rawDiff?: string): boolean {
   const snippet = c.snippet.trim();
   if (!snippet || rawDiff === undefined) return false;
-  return !rawDiff.includes(snippet);
+  // For a multi-line range the snippet is joined with newlines, which never
+  // appears verbatim in a +/- prefixed diff — check the first line's presence.
+  const firstLine = snippet.split('\n')[0].trim();
+  return firstLine.length > 0 && !rawDiff.includes(firstLine);
 }
 
 export interface RenderContext {
@@ -126,6 +129,11 @@ function renderSummary(
   ].join('\n');
 }
 
+/** "Line 12" or "Lines 12–18" for a range. */
+function lineLabel(c: Comment): string {
+  return c.endLine && c.endLine !== c.line ? `Lines ${c.line}–${c.endLine}` : `Line ${c.line}`;
+}
+
 function renderItem(c: Comment, checklist: boolean): string {
   const bullet = checklist ? '- [ ]' : '-';
   const body = c.body.trim().replace(/\n/g, '\n    ');
@@ -133,8 +141,9 @@ function renderItem(c: Comment, checklist: boolean): string {
     return `${bullet} **File comment:** ${body}`;
   }
   const snippet = c.snippet.trim();
-  const context = snippet ? ` \`${snippet}\`` : '';
-  return `${bullet} **Line ${c.line} (${c.side}):**${context}\n  → ${body}`;
+  // A range snippet is multi-line; keep the marker compact and indent it.
+  const context = snippet ? (snippet.includes('\n') ? '' : ` \`${snippet}\``) : '';
+  return `${bullet} **${lineLabel(c)} (${c.side}):**${context}\n  → ${body}`;
 }
 
 function renderOrphans(orphaned: Comment[], checklist: boolean): string {
@@ -145,9 +154,9 @@ function renderOrphans(orphaned: Comment[], checklist: boolean): string {
     .map((c) => {
       const bullet = checklist ? '- [ ]' : '-';
       const snippet = c.snippet.trim();
-      const context = snippet ? ` \`${snippet}\`` : '';
+      const context = snippet && !snippet.includes('\n') ? ` \`${snippet}\`` : '';
       const body = c.body.trim().replace(/\n/g, '\n    ');
-      return `${bullet} **${c.file}** (line ${c.line}, ${c.side}):${context}\n  → ${body}`;
+      return `${bullet} **${c.file}** (${lineLabel(c).toLowerCase()}, ${c.side}):${context}\n  → ${body}`;
     });
   return (
     '## Orphaned Comments\n\n' +
@@ -204,6 +213,7 @@ export function buildReviewJson(
     id: c.id,
     file: c.file,
     line: c.line,
+    ...(c.endLine && c.endLine !== c.line ? { endLine: c.endLine } : {}),
     side: c.side,
     scope: c.scope ?? 'line',
     snippet: c.snippet,

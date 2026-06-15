@@ -8,9 +8,10 @@ export type CommentScope = 'line' | 'file';
 export interface Comment {
   id: string;
   file: string; // repo-relative path
-  line: number; // line number on the chosen side (0 for file-scope comments)
+  line: number; // (start) line on the chosen side (0 for file-scope comments)
+  endLine?: number; // last line of a multi-line range (absent/equal = single line)
   side: DiffSide; // which side of the diff the line belongs to (ignored for file scope)
-  snippet: string; // the line's text, for context + drift detection
+  snippet: string; // the line's text (block text for a range), for context + drift detection
   body: string;
   status: CommentStatus;
   scope?: CommentScope; // defaults to 'line' when absent (pre-v0.4 comments)
@@ -35,6 +36,7 @@ export interface CommentsFile {
 export type NewComment = Pick<Comment, 'file' | 'body'> & {
   // line/side are required for line comments and omitted for file comments.
   line?: number;
+  endLine?: number;
   side?: DiffSide;
   scope?: CommentScope;
   snippet?: string;
