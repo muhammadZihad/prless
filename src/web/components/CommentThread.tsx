@@ -14,6 +14,7 @@ interface Props {
   onToggleSelect?: (id: string) => void;
   onCancel?: () => void; // close/dismiss the composer
   onReply?: () => void; // open the composer on an existing thread
+  hint?: string; // extra hint shown under the composer
 }
 
 export function CommentThread({
@@ -29,6 +30,7 @@ export function CommentThread({
   onToggleSelect,
   onCancel,
   onReply,
+  hint,
 }: Props) {
   const [draft, setDraft] = useState('');
 
@@ -98,6 +100,7 @@ export function CommentThread({
               <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>↵</kbd> to submit
             </span>
           </div>
+          {hint && <p className="composer-hint">{hint}</p>}
         </div>
       ) : (
         onReply && (

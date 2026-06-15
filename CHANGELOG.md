@@ -8,6 +8,13 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Multi-line range comments: drag across line numbers (or click then shift-click) to select a
+  block, and leave one comment for the whole range (rendered as "Lines X–Y" in the export).
+- Auto-select a free port: if the chosen port is busy, prless tries the next ones (up to 10)
+  and serves on the first free one.
+- `prless ls` lists running prless servers (port + folder), and `prless stop <port|all>` stops them.
+- When all ports are busy, an interactive menu shows the running servers so you can stop one and
+  reuse its port (for the requested folder or the browser picker), or cancel.
 - Single-file view: a sidebar toggle to render only the file selected in the sidebar instead
   of all changed files at once, so you don't scroll past everything.
 - Keyboard shortcuts for navigation and most toolbar actions (e.g. `j`/`k` next/previous file,

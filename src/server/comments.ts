@@ -72,6 +72,9 @@ export class CommentStore {
       scope,
       createdAt: now,
       updatedAt: now,
+      ...(input.endLine && input.endLine !== (input.line ?? 0)
+        ? { endLine: input.endLine }
+        : {}),
       ...(input.beforeContext ? { beforeContext: input.beforeContext } : {}),
       ...(input.afterContext ? { afterContext: input.afterContext } : {}),
       ...(input.hunkHeader ? { hunkHeader: input.hunkHeader } : {}),

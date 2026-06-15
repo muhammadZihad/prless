@@ -96,9 +96,16 @@ prless open ~/projects/my-app       # review a repo by path
 prless open . --port 4200           # serve on a custom port (default 4100)
 prless open . --no-open             # don't launch a browser automatically
 prless open . -- src app tests      # limit the review to specific paths
+prless ls                           # list running prless servers (port + folder)
+prless stop 4100                    # stop the server on a port
+prless stop all                     # stop every running server
 prless help                         # show usage
 prless --version                    # show the installed version
 ```
+
+If a port is busy, prless automatically uses the next free one (up to 10). When all are
+taken it shows the running servers so you can stop one and reuse its port, pick a different
+folder, or cancel.
 
 | Option | Description |
 | --- | --- |

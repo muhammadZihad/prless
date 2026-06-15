@@ -145,12 +145,20 @@ export function App() {
   }, [comments]);
 
   const handleAdd = useCallback(
-    async (file: string, side: DiffSide, line: number, anchor: AddAnchor, body: string) => {
+    async (
+      file: string,
+      side: DiffSide,
+      line: number,
+      endLine: number | undefined,
+      anchor: AddAnchor,
+      body: string,
+    ) => {
       try {
         const created = await api.addComment({
           file,
           side,
           line,
+          endLine,
           body,
           snippet: anchor.snippet,
           beforeContext: anchor.beforeContext,
