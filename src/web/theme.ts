@@ -9,7 +9,13 @@ export type CodeThemeId =
   | 'nord'
   | 'one-dark'
   | 'solarized-light'
-  | 'monokai';
+  | 'solarized-dark'
+  | 'monokai'
+  | 'tokyo-night'
+  | 'catppuccin-mocha'
+  | 'gruvbox-dark'
+  | 'night-owl'
+  | 'ayu-dark';
 
 const APP_KEY = 'prless:theme';
 const CODE_KEY = 'prless:code-theme';

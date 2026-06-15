@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseDiff } from 'react-diff-view';
 import type { Comment, DiffMode, DiffSide, RefsResponse } from '../shared/types';
 import { api } from './api';
@@ -13,13 +13,24 @@ import {
 } from './diffUtils';
 import { useTheme } from './theme';
 import { copyToClipboard } from './clipboard';
+import {
+  defaultBindings,
+  loadBindings,
+  saveBindings,
+  useShortcuts,
+  type ActionId,
+  type Bindings,
+} from './shortcuts';
 import { DiffView, type AddAnchor } from './components/DiffView';
 import { FileList } from './components/FileList';
 import { OrphanedComments } from './components/OrphanedComments';
 import { RefPicker } from './components/RefPicker';
 import { RepoPicker } from './components/RepoPicker';
-import { CodeThemePicker, ThemeToggle } from './components/Controls';
+import { ShortcutsModal } from './components/ShortcutsModal';
+import { ThemeModal } from './components/ThemeModal';
+import { CodeThemeButton, ThemeToggle, ViewToggle } from './components/Controls';
 import { Toast, type ToastState } from './components/Toast';
+import { usePersistedState } from './settings';
 
 export function App() {
   const [repo, setRepo] = useState<{ repoRoot: string; name: string } | null>(null);
@@ -33,16 +44,23 @@ export function App() {
   const [untracked, setUntracked] = useState<string[]>([]);
   const [ignored, setIgnored] = useState<string[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [viewType, setViewType] = useState<'unified' | 'split'>('split');
+  // Remembered across reloads.
+  const [viewType, setViewType] = usePersistedState<'unified' | 'split'>('prless:view-type', 'split');
+  const [hideGenerated, setHideGenerated] = usePersistedState('prless:hide-generated', false);
+  const [showUnstaged, setShowUnstaged] = usePersistedState('prless:show-unstaged', true);
+  const [singleFile, setSingleFile] = usePersistedState('prless:single-file', false);
   const [fileQuery, setFileQuery] = useState('');
   const [commentedOnly, setCommentedOnly] = useState(false);
-  const [hideGenerated, setHideGenerated] = useState(false);
-  const [showUnstaged, setShowUnstaged] = useState(true);
   const [largeDismissed, setLargeDismissed] = useState(false);
+  const [activeFile, setActiveFile] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState | null>(null);
   const [error, setError] = useState<string>('');
   const [exported, setExported] = useState(false);
+  const [bindings, setBindings] = useState<Bindings>(loadBindings);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const { appTheme, codeTheme, setCodeTheme, toggleAppTheme } = useTheme();
 
   const files = useMemo<FileDiff[]>(() => {
@@ -263,6 +281,67 @@ export function App() {
     });
   }, [files, fileQuery, hideGenerated, commentedOnly, commentedFiles]);
 
+  // In single-file mode, render only the chosen file (default to the first visible one).
+  const effectiveActive = useMemo(() => {
+    if (!singleFile || visibleFiles.length === 0) return null;
+    const stillVisible = visibleFiles.some((f) => filePath(f) === activeFile);
+    return stillVisible ? activeFile : filePath(visibleFiles[0]);
+  }, [singleFile, visibleFiles, activeFile]);
+
+  const filesToRender = useMemo(
+    () =>
+      effectiveActive ? visibleFiles.filter((f) => filePath(f) === effectiveActive) : visibleFiles,
+    [effectiveActive, visibleFiles],
+  );
+
+  // j/k navigation: move the active file and bring it into view.
+  const moveFile = useCallback(
+    (delta: number) => {
+      const paths = visibleFiles.map(filePath);
+      if (paths.length === 0) return;
+      const current = (singleFile ? effectiveActive : activeFile) ?? paths[0];
+      const idx = paths.indexOf(current);
+      const next = paths[(((idx === -1 ? 0 : idx) + delta) % paths.length + paths.length) % paths.length];
+      setActiveFile(next);
+      requestAnimationFrame(() => {
+        document.getElementById(`file-${next}`)?.scrollIntoView({ block: 'start' });
+      });
+    },
+    [visibleFiles, singleFile, effectiveActive, activeFile],
+  );
+
+  const rebind = useCallback((id: ActionId, combo: string) => {
+    setBindings((prev) => {
+      const next = { ...prev, [id]: combo };
+      saveBindings(next);
+      return next;
+    });
+  }, []);
+
+  const resetBindings = useCallback(() => {
+    const next = defaultBindings();
+    saveBindings(next);
+    setBindings(next);
+  }, []);
+
+  useShortcuts(
+    bindings,
+    {
+      nextFile: () => moveFile(1),
+      prevFile: () => moveFile(-1),
+      splitView: () => setViewType('split'),
+      unifiedView: () => setViewType('unified'),
+      toggleSingleFile: () => setSingleFile((v) => !v),
+      focusSearch: () => searchRef.current?.focus(),
+      toggleCommented: () => setCommentedOnly((v) => !v),
+      toggleHideGenerated: () => setHideGenerated((v) => !v),
+      toggleTheme: () => toggleAppTheme(),
+      exportReview: () => void handleExport(),
+      help: () => setShortcutsOpen(true),
+    },
+    !shortcutsOpen,
+  );
+
   // Warn when the whole diff is large enough to be sluggish.
   const stats = useMemo(() => diffStats(files), [files]);
   const isLargeDiff = stats.changes > 10_000 || stats.files > 75;
@@ -314,14 +393,15 @@ export function App() {
         />
         <div className="spacer" />
         <div className="toolset">
-          <CodeThemePicker value={codeTheme} onChange={setCodeTheme} />
-          <button
-            onClick={() => setViewType((v) => (v === 'split' ? 'unified' : 'split'))}
-            title="Toggle split / unified view"
-          >
-            {viewType === 'split' ? 'Split' : 'Unified'}
-          </button>
+          <CodeThemeButton value={codeTheme} onClick={() => setThemeOpen(true)} />
+          <ViewToggle
+            viewType={viewType}
+            onToggle={() => setViewType(viewType === 'split' ? 'unified' : 'split')}
+          />
           <ThemeToggle theme={appTheme} onToggle={toggleAppTheme} />
+          <button className="icon" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+            ⌘
+          </button>
           <div className="divider" />
           <button
             className={`primary${exported ? ' is-exported' : ''}`}
@@ -380,12 +460,16 @@ export function App() {
         <aside>
           <div className="file-controls">
             <input
+              ref={searchRef}
               className="file-search"
               type="search"
               value={fileQuery}
               placeholder="Search files…"
               aria-label="Search files"
               onChange={(e) => setFileQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') e.currentTarget.blur();
+              }}
             />
             <div className="file-control-toggles">
               <button
@@ -412,8 +496,20 @@ export function App() {
                 {showUnstaged ? 'Showing unstaged + untracked' : 'Staged only'}
               </button>
             )}
+            <button
+              className={`toggle${singleFile ? ' active' : ''}`}
+              onClick={() => setSingleFile((v) => !v)}
+              title="Render only the file selected in the sidebar"
+            >
+              {singleFile ? 'Single file' : 'All files'}
+            </button>
           </div>
-          <FileList files={visibleFiles} comments={comments} />
+          <FileList
+            files={visibleFiles}
+            comments={comments}
+            activeFile={effectiveActive}
+            onSelect={singleFile ? setActiveFile : undefined}
+          />
         </aside>
         <main>
           <OrphanedComments
@@ -423,14 +519,14 @@ export function App() {
             onResolve={handleResolve}
             onDelete={handleDelete}
           />
-          {visibleFiles.length === 0 ? (
+          {filesToRender.length === 0 ? (
             <div className="empty">
               {files.length === 0
                 ? 'No changes to review for this selection.'
                 : 'No files match the current filters.'}
             </div>
           ) : (
-            visibleFiles.map((file) => {
+            filesToRender.map((file) => {
               const path = filePath(file);
               const fileComments = commentsForFile(path);
               const generated = isGeneratedFile(path);
@@ -456,6 +552,24 @@ export function App() {
           )}
         </main>
       </div>
+
+      {themeOpen && (
+        <ThemeModal
+          value={codeTheme}
+          appTheme={appTheme}
+          onSelect={setCodeTheme}
+          onClose={() => setThemeOpen(false)}
+        />
+      )}
+
+      {shortcutsOpen && (
+        <ShortcutsModal
+          bindings={bindings}
+          onRebind={rebind}
+          onReset={resetBindings}
+          onClose={() => setShortcutsOpen(false)}
+        />
+      )}
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>

@@ -163,11 +163,18 @@ any external server.
 
 ## Configuration
 
-- **App theme** — light or dark, defaults to your OS setting and is remembered per browser.
-- **Syntax theme** — Auto, GitHub Light/Dark, One Dark, Dracula, Nord, Monokai, or
-  Solarized Light. The diff renders as a self-contained editor surface, so any code theme
-  looks right regardless of the app theme.
-- **View** — split or unified.
+PRless remembers your preferences per browser — app theme, syntax theme, split/unified view,
+single-file vs all-files, and the filter toggles all persist across reloads.
+
+- **App theme** — light or dark, defaults to your OS setting.
+- **Syntax theme** — pick from a modal with live previews: Auto plus GitHub Light/Dark, One
+  Dark, Dracula, Nord, Monokai, Tokyo Night, Catppuccin Mocha, Gruvbox Dark, Night Owl, Ayu
+  Dark, and Solarized Light/Dark. The diff renders as a self-contained editor surface, so any
+  code theme looks right regardless of the app theme.
+- **View** — split or unified (icon toggle in the toolbar).
+- **Keyboard shortcuts** — `j` / `k` to move between files, `mod+]` / `mod+[` for split /
+  unified, `/` to search, `f` single-file view, `e` export, and more. Press `?` for a help
+  modal that lists every shortcut and lets you rebind them (saved per browser).
 
 ## Development
 

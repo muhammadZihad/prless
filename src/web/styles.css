@@ -512,6 +512,11 @@ main {
   background: var(--bg-hover);
 }
 
+.file-list a.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .file-list-path {
   flex: 1;
   overflow: hidden;
@@ -916,4 +921,160 @@ kbd {
   .toast {
     animation: none;
   }
+}
+
+/* ───────────────────────── Shortcuts modal ───────────────────────── */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: oklch(0.2 0.02 285 / 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+}
+
+.modal-header,
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border);
+}
+
+.shortcut-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.shortcut-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.shortcut-list li:hover {
+  background: var(--bg-subtle);
+}
+
+.shortcut-label {
+  font-size: 13px;
+}
+
+.shortcut-key {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  min-width: 56px;
+  justify-content: center;
+  background: var(--bg-inset);
+}
+
+.shortcut-key.capturing {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.shortcut-key.conflict {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ───────────────────────── Theme button + modal ───────────────────────── */
+
+.theme-button {
+  font-size: 12.5px;
+  gap: 7px;
+}
+
+.theme-modal {
+  max-width: 640px;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.theme-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.theme-tile:hover {
+  border-color: var(--border-strong);
+}
+
+.theme-tile.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.theme-preview {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.theme-tile-label {
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  border-top: 1px solid var(--border);
+}
+
+.theme-tile-check {
+  color: var(--accent);
 }
