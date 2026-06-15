@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Diff, Hunk, tokenize } from 'react-diff-view';
 import { refractor } from 'refractor';
 import type { Comment, DiffSide } from '../../shared/types';
@@ -86,6 +86,17 @@ export function DiffView({
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onKey);
     };
+  }, []);
+
+  // Drag across line numbers to select a range (GitHub-style). A mouseup
+  // anywhere ends the drag, since the pointer may leave the gutter.
+  const dragging = useRef(false);
+  useEffect(() => {
+    const stop = () => {
+      dragging.current = false;
+    };
+    window.addEventListener('mouseup', stop);
+    return () => window.removeEventListener('mouseup', stop);
   }, []);
 
   // File-scoped comments render at the header; line comments anchor to the diff.
@@ -185,6 +196,11 @@ export function DiffView({
               ? `Comment on lines ${selection.start}–${selection.end}…`
               : undefined
           }
+          hint={
+            isActive && !isRange
+              ? 'Tip: drag (or shift-click) line numbers to comment on a range.'
+              : undefined
+          }
           onReply={() => {
             const c0 = threadComments[0];
             const start = c0?.line ?? anchorLine;
@@ -274,11 +290,14 @@ export function DiffView({
           widgets={widgets}
           selectedChanges={selectedChanges}
           gutterEvents={{
-            onClick: ({ change }) => {
+            // Start (or shift-extend) a selection. Begins a drag too.
+            onMouseDown: ({ change }: { change?: unknown }, event?: ReactMouseEvent<HTMLElement>) => {
               if (!change) return;
-              const a = changeAnchor(change);
+              event?.preventDefault?.(); // don't begin a native text selection
+              const a = changeAnchor(change as Parameters<typeof changeAnchor>[0]);
+              dragging.current = true;
               setSelection((prev) => {
-                if (shiftHeld.current && prev && prev.side === a.side) {
+                if ((event?.shiftKey || shiftHeld.current) && prev && prev.side === a.side) {
                   return {
                     side: a.side,
                     anchor: prev.anchor,
@@ -287,6 +306,20 @@ export function DiffView({
                   };
                 }
                 return { side: a.side, anchor: a.line, start: a.line, end: a.line };
+              });
+            },
+            // Extend the range while dragging across line numbers on the same side.
+            onMouseEnter: ({ change }: { change?: unknown }) => {
+              if (!dragging.current || !change) return;
+              const a = changeAnchor(change as Parameters<typeof changeAnchor>[0]);
+              setSelection((prev) => {
+                if (!prev || prev.side !== a.side) return prev;
+                return {
+                  side: a.side,
+                  anchor: prev.anchor,
+                  start: Math.min(prev.anchor, a.line),
+                  end: Math.max(prev.anchor, a.line),
+                };
               });
             },
           }}
