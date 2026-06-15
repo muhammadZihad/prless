@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-16
+
 ### Added
 
 - Multi-line range comments: drag across line numbers (or click then shift-click) to select a
