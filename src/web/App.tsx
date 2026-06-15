@@ -22,6 +22,7 @@ import {
   type Bindings,
 } from './shortcuts';
 import { DiffView, type AddAnchor } from './components/DiffView';
+import { DiffFilters } from './components/DiffFilters';
 import { FileList } from './components/FileList';
 import { OrphanedComments } from './components/OrphanedComments';
 import { RefPicker } from './components/RefPicker';
@@ -41,13 +42,11 @@ export function App() {
   const [base, setBase] = useState('');
   const [head, setHead] = useState('');
   const [raw, setRaw] = useState('');
-  const [untracked, setUntracked] = useState<string[]>([]);
   const [ignored, setIgnored] = useState<string[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   // Remembered across reloads.
   const [viewType, setViewType] = usePersistedState<'unified' | 'split'>('prless:view-type', 'split');
   const [hideGenerated, setHideGenerated] = usePersistedState('prless:hide-generated', false);
-  const [showUnstaged, setShowUnstaged] = usePersistedState('prless:show-unstaged', true);
   const [singleFile, setSingleFile] = usePersistedState('prless:single-file', false);
   const [fileQuery, setFileQuery] = useState('');
   const [commentedOnly, setCommentedOnly] = useState(false);
@@ -122,22 +121,19 @@ export function App() {
     }
     if (mode === 'compare' && (!base || !head)) {
       setRaw('');
-      setUntracked([]);
       setIgnored([]);
       return;
     }
     try {
-      const res = await api.getDiff(mode, base, head, showUnstaged);
+      const res = await api.getDiff(mode, base, head);
       setRaw(res.raw);
-      setUntracked(res.untracked ?? []);
       setIgnored(res.ignored ?? []);
     } catch (e) {
       setError(String(e));
       setRaw('');
-      setUntracked([]);
       setIgnored([]);
     }
-  }, [repo, mode, base, head, showUnstaged]);
+  }, [repo, mode, base, head]);
 
   useEffect(() => {
     loadDiff();
@@ -446,14 +442,6 @@ export function App() {
 
       {error && <div className="banner error">{error}</div>}
 
-      {untracked.length > 0 && (
-        <div className="banner warning">
-          {untracked.length} untracked {untracked.length === 1 ? 'file is' : 'files are'} hidden.
-          Turn on <strong>Showing unstaged + untracked</strong> to include{' '}
-          {untracked.length === 1 ? 'it' : 'them'}.
-        </div>
-      )}
-
       {ignored.length > 0 && (
         <div className="banner info">
           {ignored.length} {ignored.length === 1 ? 'file' : 'files'} hidden by{' '}
@@ -486,38 +474,14 @@ export function App() {
                 if (e.key === 'Escape') e.currentTarget.blur();
               }}
             />
-            <div className="file-control-toggles">
-              <button
-                className={`toggle${commentedOnly ? ' active' : ''}`}
-                onClick={() => setCommentedOnly((v) => !v)}
-                title="Show only files with comments"
-              >
-                Commented
-              </button>
-              <button
-                className={`toggle${hideGenerated ? ' active' : ''}`}
-                onClick={() => setHideGenerated((v) => !v)}
-                title="Hide generated files (lockfiles, dist/, *.min.js, …)"
-              >
-                Hide generated
-              </button>
-            </div>
-            {mode === 'working' && (
-              <button
-                className={`toggle${showUnstaged ? ' active' : ''}`}
-                onClick={() => setShowUnstaged((v) => !v)}
-                title="Include unstaged changes and untracked files (off = staged only)"
-              >
-                {showUnstaged ? 'Showing unstaged + untracked' : 'Staged only'}
-              </button>
-            )}
-            <button
-              className={`toggle${singleFile ? ' active' : ''}`}
-              onClick={() => setSingleFile((v) => !v)}
-              title="Render only the file selected in the sidebar"
-            >
-              {singleFile ? 'Single file' : 'All files'}
-            </button>
+            <DiffFilters
+              commentedOnly={commentedOnly}
+              onToggleCommented={() => setCommentedOnly((v) => !v)}
+              hideGenerated={hideGenerated}
+              onToggleHideGenerated={() => setHideGenerated((v) => !v)}
+              singleFile={singleFile}
+              onToggleSingleFile={() => setSingleFile((v) => !v)}
+            />
           </div>
           <FileList
             files={visibleFiles}

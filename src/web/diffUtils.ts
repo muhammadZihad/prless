@@ -57,6 +57,7 @@ const GENERATED_PATTERNS = [
   /\.min\.(js|css)$/,
   /\.map$/,
   /(^|\/)(dist|build|coverage|node_modules|vendor|out)\//,
+  /(^|\/)\.prless\//, // PRless's own comments.json / review.md / etc.
   /\.snap$/,
 ];
 

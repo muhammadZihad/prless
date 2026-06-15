@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- Decluttered the sidebar filters into a compact row of icon toggles (Commented, Generated,
+  one-file/all-files) under the search box.
+- The working diff now always includes staged + unstaged changes and untracked files
+  (excluding gitignored). Removed the "unstaged + untracked / staged only" toggle.
+- "Hide generated" now also hides files under the `.prless/` folder.
+
 ## [0.7.0] - 2026-06-16
 
 ### Added

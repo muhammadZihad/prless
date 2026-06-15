@@ -66,7 +66,7 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
     if (!parsed.success) {
       return reply.code(400).send({ error: formatZodError(parsed.error) });
     }
-    const { mode, base, head, unstaged } = parsed.data;
+    const { mode, base, head } = parsed.data;
     try {
       const ig = await loadIgnore(repo.repoRoot);
       return await getDiff(repo.git, {
@@ -76,7 +76,6 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
         ig,
         paths: ctx.paths,
         repoRoot: repo.repoRoot,
-        includeUnstaged: unstaged,
       });
     } catch (err) {
       if (err instanceof GitError) {
@@ -150,7 +149,7 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
     return exportReview(
       repo.repoRoot,
       comments,
-      { options: parsed.data, untracked: diff.untracked, rawDiff: diff.raw },
+      { options: parsed.data, rawDiff: diff.raw },
       new Date().toISOString(),
     );
   });

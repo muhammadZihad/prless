@@ -220,16 +220,28 @@ body {
   background: var(--bg-subtle);
 }
 
-.file-control-toggles {
+.diff-filters {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 
-.file-control-toggles .toggle {
+.filter-toggle {
   flex: 1;
   justify-content: center;
-  font-size: 12px;
-  padding: 5px 8px;
+  gap: 5px;
+  font-size: 11.5px;
+  padding: 5px 6px;
+  color: var(--text-muted);
+}
+
+.filter-toggle svg {
+  flex: none;
+}
+
+.filter-toggle.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .file-search {
