@@ -9,6 +9,7 @@ import {
   diffStats,
   filePath,
   isGeneratedFile,
+  isInternalPath,
   type FileDiff,
 } from './diffUtils';
 import { useTheme } from './theme';
@@ -67,7 +68,8 @@ export function App() {
   const files = useMemo<FileDiff[]>(() => {
     if (!raw.trim()) return [];
     try {
-      return parseDiff(raw);
+      // Never show PRless's own .prless/ files, even if the diff includes them.
+      return parseDiff(raw).filter((f) => !isInternalPath(filePath(f)));
     } catch {
       return [];
     }

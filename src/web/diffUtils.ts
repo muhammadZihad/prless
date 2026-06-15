@@ -66,6 +66,11 @@ export function isGeneratedFile(path: string): boolean {
   return GENERATED_PATTERNS.some((re) => re.test(path));
 }
 
+/** PRless's own data dir — never shown in the file list or diff. */
+export function isInternalPath(path: string): boolean {
+  return /(^|\/)\.prless\//.test(path);
+}
+
 /** Total added + removed lines in a file diff. */
 export function countChanges(file: FileDiff): number {
   let n = 0;
