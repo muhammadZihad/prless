@@ -247,3 +247,141 @@
   --tk-tag: #268bd2;
   --tk-regex: #2aa198;
 }
+
+/* ── Solarized Dark ── */
+[data-code-theme='solarized-dark'] {
+  --code-bg: #002b36;
+  --code-fg: #93a1a1;
+  --code-gutter-fg: #586e75;
+  --code-sel: #073642;
+  --code-ins-bg: #0a2f23;
+  --code-del-bg: #2b2419;
+  --code-ins-gutter: #0f4435;
+  --code-del-gutter: #4a3a1a;
+  --tk-comment: #586e75;
+  --tk-punct: #93a1a1;
+  --tk-keyword: #859900;
+  --tk-number: #d33682;
+  --tk-string: #2aa198;
+  --tk-function: #268bd2;
+  --tk-class: #b58900;
+  --tk-variable: #cb4b16;
+  --tk-operator: #859900;
+  --tk-tag: #268bd2;
+  --tk-regex: #2aa198;
+}
+
+/* ── Tokyo Night ── */
+[data-code-theme='tokyo-night'] {
+  --code-bg: #1a1b26;
+  --code-fg: #a9b1d6;
+  --code-gutter-fg: #565f89;
+  --code-sel: #28304a;
+  --code-ins-bg: #1f2b2a;
+  --code-del-bg: #2d202a;
+  --code-ins-gutter: #2a3a36;
+  --code-del-gutter: #44293a;
+  --tk-comment: #565f89;
+  --tk-punct: #a9b1d6;
+  --tk-keyword: #bb9af7;
+  --tk-number: #ff9e64;
+  --tk-string: #9ece6a;
+  --tk-function: #7aa2f7;
+  --tk-class: #2ac3de;
+  --tk-variable: #c0caf5;
+  --tk-operator: #89ddff;
+  --tk-tag: #f7768e;
+  --tk-regex: #b4f9f8;
+}
+
+/* ── Catppuccin Mocha ── */
+[data-code-theme='catppuccin-mocha'] {
+  --code-bg: #1e1e2e;
+  --code-fg: #cdd6f4;
+  --code-gutter-fg: #6c7086;
+  --code-sel: #313244;
+  --code-ins-bg: #20322a;
+  --code-del-bg: #332430;
+  --code-ins-gutter: #2c4338;
+  --code-del-gutter: #4a2f3d;
+  --tk-comment: #6c7086;
+  --tk-punct: #cdd6f4;
+  --tk-keyword: #cba6f7;
+  --tk-number: #fab387;
+  --tk-string: #a6e3a1;
+  --tk-function: #89b4fa;
+  --tk-class: #f9e2af;
+  --tk-variable: #f38ba8;
+  --tk-operator: #94e2d5;
+  --tk-tag: #f38ba8;
+  --tk-regex: #f5c2e7;
+}
+
+/* ── Gruvbox Dark ── */
+[data-code-theme='gruvbox-dark'] {
+  --code-bg: #282828;
+  --code-fg: #ebdbb2;
+  --code-gutter-fg: #7c6f64;
+  --code-sel: #3c3836;
+  --code-ins-bg: #32361a;
+  --code-del-bg: #3c2526;
+  --code-ins-gutter: #4a5113;
+  --code-del-gutter: #5a2c2c;
+  --tk-comment: #928374;
+  --tk-punct: #ebdbb2;
+  --tk-keyword: #fb4934;
+  --tk-number: #d3869b;
+  --tk-string: #b8bb26;
+  --tk-function: #b8bb26;
+  --tk-class: #fabd2f;
+  --tk-variable: #83a598;
+  --tk-operator: #fe8019;
+  --tk-tag: #8ec07c;
+  --tk-regex: #fe8019;
+}
+
+/* ── Night Owl ── */
+[data-code-theme='night-owl'] {
+  --code-bg: #011627;
+  --code-fg: #d6deeb;
+  --code-gutter-fg: #4b6479;
+  --code-sel: #1d3b53;
+  --code-ins-bg: #11241b;
+  --code-del-bg: #2a1c25;
+  --code-ins-gutter: #1c3a2a;
+  --code-del-gutter: #44283a;
+  --tk-comment: #637777;
+  --tk-punct: #d6deeb;
+  --tk-keyword: #c792ea;
+  --tk-number: #f78c6c;
+  --tk-string: #ecc48d;
+  --tk-function: #82aaff;
+  --tk-class: #ffcb8b;
+  --tk-variable: #7fdbca;
+  --tk-operator: #7fdbca;
+  --tk-tag: #7fdbca;
+  --tk-regex: #5ca7e4;
+}
+
+/* ── Ayu Dark ── */
+[data-code-theme='ayu-dark'] {
+  --code-bg: #0b0e14;
+  --code-fg: #bfbdb6;
+  --code-gutter-fg: #4d5566;
+  --code-sel: #1b2733;
+  --code-ins-bg: #11221a;
+  --code-del-bg: #2a1a1a;
+  --code-ins-gutter: #1c3a2a;
+  --code-del-gutter: #4a2626;
+  --tk-comment: #5c6773;
+  --tk-punct: #bfbdb6;
+  --tk-keyword: #ff8f40;
+  --tk-number: #d2a6ff;
+  --tk-string: #aad94c;
+  --tk-function: #ffb454;
+  --tk-class: #59c2ff;
+  --tk-variable: #f29668;
+  --tk-operator: #f29668;
+  --tk-tag: #39bae6;
+  --tk-regex: #95e6cb;
+}
