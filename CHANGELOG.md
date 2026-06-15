@@ -9,7 +9,10 @@ All notable changes to this project are documented here. The format is based on
 ### Added
 
 - Auto-select a free port: if the chosen port is busy, prless tries the next ones (up to 10)
-  and serves on the first free one, with a clear message if all are taken.
+  and serves on the first free one.
+- `prless ls` lists running prless servers (port + folder), and `prless stop <port|all>` stops them.
+- When all ports are busy, an interactive menu shows the running servers so you can stop one and
+  reuse its port (for the requested folder or the browser picker), or cancel.
 
 ## [0.6.0] - 2026-06-15
 
