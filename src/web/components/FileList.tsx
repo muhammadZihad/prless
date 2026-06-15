@@ -5,7 +5,14 @@ interface Props {
   files: FileDiff[];
   comments: Comment[];
   activeFile?: string | null; // highlighted file (single-file mode)
-  onSelect?: (path: string) => void; // when set, clicking selects instead of jumping
+  onSelect?: (path: string) => void; // single-file mode: select instead of just scrolling
+}
+
+/** Put a file in the URL (no history spam) and scroll it into view. */
+export function focusFile(path: string): void {
+  const id = `file-${path}`;
+  window.history.replaceState(null, '', `#${id}`);
+  document.getElementById(id)?.scrollIntoView({ block: 'start' });
 }
 
 export function FileList({ files, comments, activeFile, onSelect }: Props) {
@@ -29,10 +36,9 @@ export function FileList({ files, comments, activeFile, onSelect }: Props) {
                 title={path}
                 className={isActive ? 'is-active' : undefined}
                 onClick={(e) => {
-                  if (onSelect) {
-                    e.preventDefault();
-                    onSelect(path);
-                  }
+                  e.preventDefault();
+                  onSelect?.(path); // single-file mode: render just this file
+                  focusFile(path); // always reflect the file in the URL + scroll
                 }}
               >
                 <span className={`ftype ftype-${file.type}`}>{file.type[0].toUpperCase()}</span>

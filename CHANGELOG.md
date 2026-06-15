@@ -27,6 +27,13 @@ All notable changes to this project are documented here. The format is based on
 - Remembers your preferences across reloads: split/unified view, syntax theme, light/dark,
   single-file vs all-files, and the hide-generated / unstaged toggles.
 
+### Fixed
+
+- Clicking a file in the sidebar now puts it in the URL (`#file-<path>`) and scrolls it into
+  view, so the link is shareable and survives a reload.
+- Reloading a tab with a `#file-<path>` hash scrolls that file into view once the diff has
+  loaded (previously the async diff meant the browser couldn't honor the hash on reload).
+
 ## [0.6.0] - 2026-06-15
 
 ### Added
