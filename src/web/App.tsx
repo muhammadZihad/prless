@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseDiff } from 'react-diff-view';
 import type { Comment, DiffMode, DiffSide, RefsResponse } from '../shared/types';
 import { api } from './api';
@@ -124,6 +124,21 @@ export function App() {
   useEffect(() => {
     loadDiff();
   }, [loadDiff]);
+
+  // On a reload, the diff loads async — so the browser can't honor a
+  // `#file-<path>` hash at first paint. Once the diff has rendered, scroll the
+  // hashed file into view (once).
+  const scrolledToHash = useRef(false);
+  useEffect(() => {
+    if (scrolledToHash.current || files.length === 0) return;
+    const hash = decodeURIComponent(window.location.hash);
+    if (!hash.startsWith('#file-')) return;
+    scrolledToHash.current = true;
+    const id = hash.slice(1);
+    requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ block: 'start' });
+    });
+  }, [files]);
 
   // A prior export is stale once comments change, so reset the button.
   useEffect(() => {

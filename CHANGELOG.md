@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- Reloading a tab with a `#file-<path>` hash now scrolls that file into view once the diff has
+  loaded (previously the async diff meant the browser couldn't honor the hash on reload).
+
 ## [0.6.0] - 2026-06-15
 
 ### Added
