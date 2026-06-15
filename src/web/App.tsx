@@ -48,6 +48,8 @@ export function App() {
   const [viewType, setViewType] = usePersistedState<'unified' | 'split'>('prless:view-type', 'split');
   const [hideGenerated, setHideGenerated] = usePersistedState('prless:hide-generated', false);
   const [singleFile, setSingleFile] = usePersistedState('prless:single-file', false);
+  const [sidebarWidth, setSidebarWidth] = usePersistedState('prless:sidebar-width', 290);
+  const [resizing, setResizing] = useState(false);
   const [fileQuery, setFileQuery] = useState('');
   const [commentedOnly, setCommentedOnly] = useState(false);
   const [largeDismissed, setLargeDismissed] = useState(false);
@@ -335,6 +337,29 @@ export function App() {
     setBindings(next);
   }, []);
 
+  // Drag the divider to resize the sidebar (clamped). Persisted across reloads.
+  const startResize = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = e.currentTarget.parentElement?.firstElementChild?.getBoundingClientRect().width ?? 290;
+    setResizing(true);
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    const onMove = (ev: PointerEvent) => {
+      const next = Math.min(Math.max(startWidth + (ev.clientX - startX), 180), 600);
+      setSidebarWidth(next);
+    };
+    const onUp = () => {
+      setResizing(false);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, []);
+
   useShortcuts(
     bindings,
     {
@@ -459,7 +484,7 @@ export function App() {
         </div>
       )}
 
-      <div className="layout">
+      <div className="layout" style={{ gridTemplateColumns: `${sidebarWidth}px 6px 1fr` }}>
         <aside>
           <div className="file-controls">
             <input
@@ -490,6 +515,15 @@ export function App() {
             onSelect={singleFile ? setActiveFile : undefined}
           />
         </aside>
+        <div
+          className={`resizer${resizing ? ' dragging' : ''}`}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize sidebar"
+          onPointerDown={startResize}
+          onDoubleClick={() => setSidebarWidth(290)}
+          title="Drag to resize · double-click to reset"
+        />
         <main>
           <OrphanedComments
             comments={orphanComments}

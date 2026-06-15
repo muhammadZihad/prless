@@ -465,7 +465,7 @@ button:disabled {
 .layout {
   flex: 1;
   display: grid;
-  grid-template-columns: 290px 1fr;
+  grid-template-columns: 290px 1fr; /* sidebar width is overridden inline */
   overflow: hidden;
 }
 
@@ -473,6 +473,30 @@ aside {
   border-right: 1px solid var(--border);
   overflow-y: auto;
   background: var(--bg-subtle);
+  min-width: 0;
+}
+
+/* Draggable divider between the sidebar and the diff. */
+.resizer {
+  position: relative;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+  margin-left: -3px; /* sit over the aside border, widen the hit area */
+  z-index: 3;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 2px;
+  border-radius: 2px;
+  transition: background 0.12s var(--ease);
+}
+
+.resizer:hover::after,
+.resizer.dragging::after {
+  background: var(--accent);
 }
 
 main {

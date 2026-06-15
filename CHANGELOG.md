@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Resizable sidebar: drag the divider between the file list and the diff to shrink/widen it
+  (double-click to reset). The width is remembered across reloads.
+
 ### Changed
 
 - Decluttered the sidebar filters into a compact row of icon toggles (Commented, Generated,
