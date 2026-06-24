@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { agentCommand } from '../../src/server/export.js';
 import { resolveAgentCommand } from './agent.js';
 
 describe('resolveAgentCommand', () => {
@@ -7,12 +8,10 @@ describe('resolveAgentCommand', () => {
   });
 
   it('trims whitespace-only settings to the default', () => {
-    expect(resolveAgentCommand('   ')).toBe('Address the review comments in .prless/review.md');
+    expect(resolveAgentCommand('   ')).toBe(agentCommand('generic'));
   });
 
   it('falls back to the default when unset', () => {
-    expect(resolveAgentCommand(undefined)).toBe(
-      'Address the review comments in .prless/review.md',
-    );
+    expect(resolveAgentCommand(undefined)).toBe(agentCommand('generic'));
   });
 });
