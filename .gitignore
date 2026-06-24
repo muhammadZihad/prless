@@ -6,3 +6,6 @@ dist
 extension/dist/
 extension/media/
 extension/*.vsix
+
+# SDD scratch (ledger, briefs, review packages)
+.superpowers/
