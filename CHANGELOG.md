@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- VS Code extension (`extension/`): review local diffs and export comments for AI
+  agents without leaving the editor. Reuses the web UI in a webview backed by the
+  shared review engine.
+
 ## [1.0.0] - 2026-06-16
 
 First stable release. PRless is a local, GitHub-style code-review tool that hands

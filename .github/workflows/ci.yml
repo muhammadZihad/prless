@@ -37,5 +37,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Typecheck extension
+        run: npm run typecheck:ext
+
+      - name: Build extension
+        run: npm run build:ext
+
       - name: Verify package contents
         run: npm pack --dry-run
