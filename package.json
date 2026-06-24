@@ -56,7 +56,7 @@
     "typecheck:ext": "tsc -p extension/tsconfig.json --noEmit",
     "build:ext-host": "node esbuild.extension.mjs",
     "build:ext": "npm run build:webview && npm run build:ext-host",
-    "package:ext": "npm run build:ext && cd extension && vsce package --no-dependencies",
+    "package:ext": "npm run build:ext && cd extension && npx vsce package --no-dependencies",
     "prepare": "npm run build"
   },
   "dependencies": {
