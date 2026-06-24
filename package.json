@@ -53,6 +53,10 @@
     "start": "node dist/server/cli.js",
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:ext": "tsc -p extension/tsconfig.json --noEmit",
+    "build:ext-host": "node esbuild.extension.mjs",
+    "build:ext": "npm run build:webview && npm run build:ext-host",
+    "package:ext": "npm run build:ext && cd extension && vsce package --no-dependencies",
     "prepare": "npm run build"
   },
   "dependencies": {
@@ -70,8 +74,11 @@
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
+    "@types/vscode": "^1.125.0",
     "@vitejs/plugin-react": "^4.3.2",
+    "@vscode/vsce": "^3.9.2",
     "concurrently": "^9.0.1",
+    "esbuild": "^0.28.1",
     "react": "^18.3.1",
     "react-diff-view": "^3.2.1",
     "react-dom": "^18.3.1",
