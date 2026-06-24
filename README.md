@@ -95,6 +95,18 @@ codex "address the comments in .prless/review.md"
 
 The agent reads each comment, makes the change, and you re-review. That is the whole loop.
 
+## In VS Code
+
+PRless is also a VS Code extension — the same review experience, inside the editor
+instead of the browser. Open the **Source Control** panel and click the **PRless**
+icon in its title bar (or run **PRless: Review Changes** from the Command Palette) to
+open the diff straight in an editor tab. Comment on lines exactly as in the web app,
+then hit **Export for AI** — the prompt is copied to your clipboard and written to
+`.prless/review.md`, just like the CLI.
+
+The extension lives in [`extension/`](./extension); see its
+[README](./extension/README.md) for install and settings.
+
 ## Commands
 
 ```bash
@@ -205,9 +217,10 @@ npm run build      # bundle the web app and compile the server into dist/
 
 ```
 src/
-  shared/   # types shared by the server and web app
-  server/   # Fastify API + CLI: git diff, comment store, review.md export
-  web/      # React + Vite UI (react-diff-view, syntax highlighting, theming)
+  shared/    # types shared by the server, web app, and extension
+  server/    # Fastify API + CLI: git diff, comment store, review.md export
+  web/       # React + Vite UI (react-diff-view, syntax highlighting, theming)
+extension/   # VS Code extension: reuses the web UI in a webview + the engine over RPC
 ```
 
 ## Scope
