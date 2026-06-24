@@ -3,6 +3,7 @@ import { RepoSession, type ActiveRepo } from '../../src/server/session.js';
 import { createGit } from '../../src/server/git.js';
 import { handleMessage, type BridgeDeps } from './bridge.js';
 import { getHtml } from './html.js';
+import { resolveAgentCommand } from './agent.js';
 
 let panel: vscode.WebviewPanel | undefined;
 const session = new RepoSession();
@@ -10,6 +11,16 @@ const session = new RepoSession();
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('prless.review', () => openReview(context)),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('prless.sendToAgent', () => {
+      const setting = vscode.workspace.getConfiguration('prless').get<string>('agentCommand');
+      const command = resolveAgentCommand(setting);
+      const terminal = vscode.window.activeTerminal ?? vscode.window.createTerminal('PRless');
+      terminal.show();
+      terminal.sendText(command, false);
+    }),
   );
 }
 
