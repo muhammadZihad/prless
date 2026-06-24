@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { HttpTransport, RpcClient } from './api';
+import { HttpTransport, RpcClient, createApi, type Transport } from './api';
 
 describe('RpcClient', () => {
   it('correlates a response to its request by id', async () => {
@@ -62,5 +62,30 @@ describe('HttpTransport', () => {
     stubFetch(409, { error: 'No folder selected.' });
     const t = new HttpTransport();
     await expect(t.request('repo.pick')).resolves.toBeNull();
+  });
+});
+
+describe('createApi getDiff payload', () => {
+  function recordingTransport() {
+    const calls: Array<{ op: string; payload?: unknown }> = [];
+    const transport: Transport = {
+      request: <T>(op: string, payload?: unknown) => {
+        calls.push({ op, payload });
+        return Promise.resolve(undefined as T);
+      },
+    };
+    return { transport, calls };
+  }
+
+  it('omits empty base/head so the rpc/schema path is not sent ""', () => {
+    const { transport, calls } = recordingTransport();
+    createApi(transport).getDiff('working', '', '');
+    expect(calls[0]).toEqual({ op: 'diff.get', payload: { mode: 'working' } });
+  });
+
+  it('passes base/head through when they are non-empty', () => {
+    const { transport, calls } = recordingTransport();
+    createApi(transport).getDiff('compare', 'main', 'dev');
+    expect(calls[0]).toEqual({ op: 'diff.get', payload: { mode: 'compare', base: 'main', head: 'dev' } });
   });
 });

@@ -131,20 +131,31 @@ function createTransport(): Transport {
   return new HttpTransport();
 }
 
+export function createApi(transport: Transport) {
+  return {
+    getRepo: () => transport.request<RepoInfo>('repo.get'),
+    getUpdate: () => transport.request<UpdateInfo>('update.get'),
+    pickRepo: () => transport.request<RepoInfo | null>('repo.pick'),
+    getRefs: () => transport.request<RefsResponse>('refs.get'),
+    getDiff: (mode: DiffMode, base?: string, head?: string) => {
+      // Omit empty base/head so both transports send the same payload: the
+      // schema's base/head are min(1) optional, and '' (the UI's "unset" value
+      // outside compare mode) would otherwise be rejected on the RPC path.
+      const payload: { mode: DiffMode; base?: string; head?: string } = { mode };
+      if (base) payload.base = base;
+      if (head) payload.head = head;
+      return transport.request<DiffResponse>('diff.get', payload);
+    },
+    getComments: () => transport.request<Comment[]>('comments.list'),
+    addComment: (input: NewComment) => transport.request<Comment>('comments.create', input),
+    patchComment: (id: string, patch: CommentPatch) =>
+      transport.request<Comment>('comments.patch', { id, patch }),
+    deleteComment: (id: string) => transport.request<void>('comments.delete', { id }),
+    exportReview: (options: ExportOptions = {}) =>
+      transport.request<ExportResponse>('export.run', options),
+  };
+}
+
 const transport: Transport = createTransport();
 
-export const api = {
-  getRepo: () => transport.request<RepoInfo>('repo.get'),
-  getUpdate: () => transport.request<UpdateInfo>('update.get'),
-  pickRepo: () => transport.request<RepoInfo | null>('repo.pick'),
-  getRefs: () => transport.request<RefsResponse>('refs.get'),
-  getDiff: (mode: DiffMode, base?: string, head?: string) =>
-    transport.request<DiffResponse>('diff.get', { mode, base, head }),
-  getComments: () => transport.request<Comment[]>('comments.list'),
-  addComment: (input: NewComment) => transport.request<Comment>('comments.create', input),
-  patchComment: (id: string, patch: CommentPatch) =>
-    transport.request<Comment>('comments.patch', { id, patch }),
-  deleteComment: (id: string) => transport.request<void>('comments.delete', { id }),
-  exportReview: (options: ExportOptions = {}) =>
-    transport.request<ExportResponse>('export.run', options),
-};
+export const api = createApi(transport);
