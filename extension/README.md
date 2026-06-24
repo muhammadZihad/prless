@@ -19,3 +19,20 @@ the open comments to `.prless/review.md` (and your clipboard) for any AI agent.
 
 Everything stays local. Comments persist in `.prless/comments.json`; add `.prless/`
 to your `.gitignore` to keep them out of commits.
+
+## Build & install from source
+
+Not on the Marketplace yet — build the `.vsix` from the repo root:
+
+```bash
+npm install
+npm run package:ext            # -> extension/prless-vscode-<version>.vsix
+code --install-extension extension/prless-vscode-*.vsix
+```
+
+To iterate without installing, launch an Extension Development Host with PRless loaded:
+
+```bash
+npm run build:ext              # refresh extension/dist + extension/media
+code --extensionDevelopmentPath="$PWD/extension" /path/to/a/git/repo
+```

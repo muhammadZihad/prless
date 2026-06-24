@@ -213,6 +213,14 @@ npm run typecheck
 npm run build      # bundle the web app and compile the server into dist/
 ```
 
+To build and package the **VS Code extension** (lives in `extension/`):
+
+```bash
+npm run typecheck:ext   # typecheck the extension host + bridge
+npm run build:ext       # build the webview bundle (extension/media) + host bundle (extension/dist)
+npm run package:ext     # produce extension/prless-vscode-<version>.vsix (runs build:ext first)
+```
+
 ### Project structure
 
 ```
