@@ -12,7 +12,7 @@
   "activationEvents": [],
   "contributes": {
     "commands": [
-      { "command": "prless.review", "title": "Review Changes", "category": "PRless" },
+      { "command": "prless.review", "title": "Review Changes", "category": "PRless", "icon": "$(git-pull-request)" },
       { "command": "prless.sendToAgent", "title": "Send Review to Agent Terminal", "category": "PRless" }
     ],
     "menus": {
