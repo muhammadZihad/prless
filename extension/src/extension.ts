@@ -42,6 +42,8 @@ function openReview(context: vscode.ExtensionContext): void {
     retainContextWhenHidden: true,
     localResourceRoots: [mediaUri],
   });
+  // Brand the editor tab with the PRless logo instead of the generic file icon.
+  panel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'icons', 'prless.svg');
 
   const webview = panel.webview;
   const nonce = makeNonce();

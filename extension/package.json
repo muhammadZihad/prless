@@ -8,11 +8,12 @@
   "repository": { "type": "git", "url": "https://github.com/muhammadZihad/prless" },
   "engines": { "vscode": "^1.85.0" },
   "categories": ["SCM Providers", "Other"],
+  "icon": "icons/prless.png",
   "main": "./dist/extension.js",
   "activationEvents": [],
   "contributes": {
     "commands": [
-      { "command": "prless.review", "title": "Review Changes", "category": "PRless", "icon": "$(git-pull-request)" },
+      { "command": "prless.review", "title": "Review Changes", "category": "PRless", "icon": "icons/prless.svg" },
       { "command": "prless.sendToAgent", "title": "Send Review to Agent Terminal", "category": "PRless" }
     ],
     "menus": {
