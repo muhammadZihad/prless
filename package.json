@@ -57,6 +57,7 @@
     "build:ext-host": "node esbuild.extension.mjs",
     "build:ext": "npm run build:webview && npm run build:ext-host",
     "package:ext": "npm run build:ext && cd extension && npx vsce package --no-dependencies",
+    "publish:ext": "npm run build:ext && cd extension && npx vsce publish --no-dependencies",
     "prepare": "npm run build"
   },
   "dependencies": {
@@ -79,6 +80,7 @@
     "@vscode/vsce": "^3.9.2",
     "concurrently": "^9.0.1",
     "esbuild": "^0.28.1",
+    "ovsx": "^1.0.2",
     "react": "^18.3.1",
     "react-diff-view": "^3.2.1",
     "react-dom": "^18.3.1",
