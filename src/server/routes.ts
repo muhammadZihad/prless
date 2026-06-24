@@ -1,18 +1,18 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { exportReview } from './export.js';
-import { getDiff, getRefs, GitError } from './git.js';
-import { loadIgnore } from './ignore.js';
+import { GitError, createGit } from './git.js';
 import { pickFolder, PickerUnavailableError } from './picker.js';
 import { checkForUpdate, PACKAGE_NAME, VERSION } from './update.js';
 import {
-  CreateCommentSchema,
-  DiffQuerySchema,
-  ExportOptionsSchema,
-  PatchCommentSchema,
-  formatZodError,
-} from './schemas.js';
+  ValidationError,
+  createCommentOp,
+  deleteCommentOp,
+  getDiffOp,
+  getRefsOp,
+  listCommentsOp,
+  patchCommentOp,
+  runExportOp,
+} from './engine-ops.js';
 import type { ActiveRepo, RepoSession } from './session.js';
-import { createGit } from './git.js';
 
 export interface ApiContext {
   session: RepoSession;
@@ -27,6 +27,14 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
       return null;
     }
     return ctx.session.current;
+  };
+
+  /** Map engine-ops errors to the same HTTP codes the inline handlers used. */
+  const sendError = (reply: FastifyReply, err: unknown): FastifyReply => {
+    if (err instanceof ValidationError || err instanceof GitError) {
+      return reply.code(400).send({ error: err.message });
+    }
+    throw err;
   };
 
   app.get('/api/repo', async () => {
@@ -62,101 +70,65 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
   app.get('/api/refs', async (_request, reply) => {
     const repo = requireRepo(reply);
     if (!repo) return reply;
-    return getRefs(repo.git);
+    return getRefsOp(repo);
   });
 
   app.get('/api/diff', async (request, reply) => {
     const repo = requireRepo(reply);
     if (!repo) return reply;
-    const parsed = DiffQuerySchema.safeParse(request.query ?? {});
-    if (!parsed.success) {
-      return reply.code(400).send({ error: formatZodError(parsed.error) });
-    }
-    const { mode, base, head } = parsed.data;
     try {
-      const ig = await loadIgnore(repo.repoRoot);
-      return await getDiff(repo.git, {
-        mode,
-        base,
-        head,
-        ig,
-        paths: ctx.paths,
-        repoRoot: repo.repoRoot,
-      });
+      return await getDiffOp(repo, ctx.paths, request.query ?? {});
     } catch (err) {
-      if (err instanceof GitError) {
-        return reply.code(400).send({ error: err.message });
-      }
-      throw err;
+      return sendError(reply, err);
     }
   });
 
   app.get('/api/comments', async (_request, reply) => {
     const repo = requireRepo(reply);
     if (!repo) return reply;
-    return repo.store.list();
+    return listCommentsOp(repo);
   });
 
   app.post('/api/comments', async (request, reply) => {
     const repo = requireRepo(reply);
     if (!repo) return reply;
-    const parsed = CreateCommentSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: formatZodError(parsed.error) });
+    try {
+      const created = await createCommentOp(repo, request.body);
+      return reply.code(201).send(created);
+    } catch (err) {
+      return sendError(reply, err);
     }
-    const created = await repo.store.add(parsed.data);
-    return reply.code(201).send(created);
   });
 
   app.patch('/api/comments/:id', async (request, reply) => {
     const repo = requireRepo(reply);
     if (!repo) return reply;
     const { id } = request.params as { id: string };
-    const parsed = PatchCommentSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: formatZodError(parsed.error) });
+    try {
+      const updated = await patchCommentOp(repo, id, request.body);
+      if (!updated) return reply.code(404).send({ error: 'comment not found' });
+      return updated;
+    } catch (err) {
+      return sendError(reply, err);
     }
-    const updated = await repo.store.patch(id, parsed.data);
-    if (!updated) {
-      return reply.code(404).send({ error: 'comment not found' });
-    }
-    return updated;
   });
 
   app.delete('/api/comments/:id', async (request, reply) => {
     const repo = requireRepo(reply);
     if (!repo) return reply;
     const { id } = request.params as { id: string };
-    const ok = await repo.store.remove(id);
-    if (!ok) {
-      return reply.code(404).send({ error: 'comment not found' });
-    }
+    const ok = await deleteCommentOp(repo, id);
+    if (!ok) return reply.code(404).send({ error: 'comment not found' });
     return reply.code(204).send();
   });
 
   app.post('/api/export', async (request, reply) => {
     const repo = requireRepo(reply);
     if (!repo) return reply;
-    const parsed = ExportOptionsSchema.safeParse(request.body ?? {});
-    if (!parsed.success) {
-      return reply.code(400).send({ error: formatZodError(parsed.error) });
+    try {
+      return await runExportOp(repo, ctx.paths, request.body ?? {}, new Date().toISOString());
+    } catch (err) {
+      return sendError(reply, err);
     }
-    const ig = await loadIgnore(repo.repoRoot);
-    const all = await repo.store.list();
-    // Don't export comments on files hidden by .prlessignore.
-    const comments = ig ? all.filter((c) => !ig.ignores(c.file)) : all;
-    // Use the working-tree diff as the reference for orphan detection.
-    const diff = await getDiff(repo.git, {
-      mode: 'working',
-      ig,
-      paths: ctx.paths,
-      repoRoot: repo.repoRoot,
-    });
-    return exportReview(
-      repo.repoRoot,
-      comments,
-      { options: parsed.data, rawDiff: diff.raw },
-      new Date().toISOString(),
-    );
   });
 }
