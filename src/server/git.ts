@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { simpleGit, type SimpleGit } from 'simple-git';
 import type { Ignore } from 'ignore';
@@ -135,4 +136,75 @@ export async function getDiff(git: SimpleGit, params: DiffParams): Promise<DiffR
 
   const { raw, ignored } = filterDiff(rawAll, ig);
   return { mode, base, head, raw, ignored };
+}
+
+export interface ChangeTokenOptions {
+  paths?: string[];
+  repoRoot: string;
+  ig?: Ignore | null;
+}
+
+/** Extract the (new) path from a `git status --porcelain` line (handles renames). */
+function porcelainPath(line: string): string | null {
+  if (line.length < 4) return null;
+  let p = line.slice(3);
+  const arrow = p.indexOf(' -> ');
+  if (arrow !== -1) p = p.slice(arrow + 4);
+  return p.trim() || null;
+}
+
+/**
+ * A cheap signature of the repo's uncommitted state, used for hot reload. It
+ * changes precisely when the visible diff would: file added/removed/staged
+ * (porcelain), content edited (mtime + size — porcelain alone wouldn't change
+ * for an already-modified file), or HEAD/branch moved (commit / switch).
+ *
+ * Paths under `.prless/` or matched by `.prlessignore` are excluded so the tool
+ * writing its own comments.json never triggers a reload.
+ */
+export async function getChangeToken(
+  git: SimpleGit,
+  { paths = [], repoRoot, ig = null }: ChangeTokenOptions,
+): Promise<string> {
+  const args = ['-c', 'core.quotepath=false', 'status', '--porcelain', '--untracked-files=all'];
+  if (paths.length) args.push('--', ...paths);
+
+  let status = '';
+  try {
+    status = await git.raw(args);
+  } catch {
+    status = '';
+  }
+
+  const kept = status
+    .split('\n')
+    .map((l) => l.replace(/\r$/, ''))
+    .filter((l) => l.length > 0)
+    .filter((l) => {
+      const p = porcelainPath(l);
+      return !p || !(isInternalPath(p) || ig?.ignores(p));
+    });
+
+  const stats: string[] = [];
+  for (const line of kept) {
+    const p = porcelainPath(line);
+    if (!p) continue;
+    try {
+      const s = await stat(path.join(repoRoot, p));
+      stats.push(`${p}:${s.mtimeMs}:${s.size}`);
+    } catch {
+      // deleted / unreadable — the porcelain line already reflects it
+    }
+  }
+
+  let head = '';
+  try {
+    // sha + abbreviated branch in one call; empty repo (no HEAD) falls back to ''.
+    head = (await git.raw(['rev-parse', 'HEAD', '--abbrev-ref', 'HEAD'])).trim();
+  } catch {
+    head = '';
+  }
+
+  const composite = [head, ...kept, ...stats].join('\n');
+  return createHash('sha1').update(composite).digest('hex');
 }

@@ -6,6 +6,7 @@ import {
   ValidationError,
   createCommentOp,
   deleteCommentOp,
+  getChangeTokenOp,
   getDiffOp,
   getRefsOp,
   listCommentsOp,
@@ -81,6 +82,12 @@ export async function registerApiRoutes(app: FastifyInstance, ctx: ApiContext): 
     } catch (err) {
       return sendError(reply, err);
     }
+  });
+
+  app.get('/api/changes', async (_request, reply) => {
+    const repo = requireRepo(reply);
+    if (!repo) return reply;
+    return getChangeTokenOp(repo, ctx.paths);
   });
 
   app.get('/api/comments', async (_request, reply) => {

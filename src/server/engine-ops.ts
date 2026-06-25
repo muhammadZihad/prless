@@ -5,7 +5,7 @@ import type {
   RefsResponse,
 } from '../shared/types.js';
 import { exportReview } from './export.js';
-import { getDiff, getRefs } from './git.js';
+import { getChangeToken, getDiff, getRefs } from './git.js';
 import { loadIgnore } from './ignore.js';
 import {
   CreateCommentSchema,
@@ -33,6 +33,16 @@ export async function getDiffOp(
   const { mode, base, head } = parsed.data;
   const ig = await loadIgnore(repo.repoRoot);
   return getDiff(repo.git, { mode, base, head, ig, paths, repoRoot: repo.repoRoot });
+}
+
+/** Cheap signature of the working tree for hot reload; clients poll and compare. */
+export async function getChangeTokenOp(
+  repo: ActiveRepo,
+  paths: string[],
+): Promise<{ token: string }> {
+  const ig = await loadIgnore(repo.repoRoot);
+  const token = await getChangeToken(repo.git, { paths, repoRoot: repo.repoRoot, ig });
+  return { token };
 }
 
 export async function listCommentsOp(repo: ActiveRepo): Promise<Comment[]> {

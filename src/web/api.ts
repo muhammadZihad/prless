@@ -51,6 +51,8 @@ export class HttpTransport implements Transport {
         if (payload.head) params.set('head', payload.head);
         return json<T>(await fetch(`/api/diff?${params.toString()}`));
       }
+      case 'changes.token':
+        return json<T>(await fetch('/api/changes'));
       case 'comments.list':
         return json<T>(await fetch('/api/comments'));
       case 'comments.create':
@@ -146,6 +148,7 @@ export function createApi(transport: Transport) {
       if (head) payload.head = head;
       return transport.request<DiffResponse>('diff.get', payload);
     },
+    getChangeToken: () => transport.request<{ token: string }>('changes.token'),
     getComments: () => transport.request<Comment[]>('comments.list'),
     addComment: (input: NewComment) => transport.request<Comment>('comments.create', input),
     patchComment: (id: string, patch: CommentPatch) =>
