@@ -1,6 +1,6 @@
 {
   "name": "@muhammad_zihad/prless",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Local GitHub-style code review tool with agent-agnostic AI handoff",
   "type": "module",
   "license": "MIT",
