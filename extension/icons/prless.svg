@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="PRless">
+  <defs>
+    <linearGradient id="prless-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6d54e0"/>
+      <stop offset="1" stop-color="#ad5cd6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#prless-bg)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 8) scale(2)">
+    <circle cx="18" cy="18" r="3"/>
+    <circle cx="6" cy="6" r="3"/>
+    <path d="M6 21V9a9 9 0 0 0 9 9"/>
+  </g>
+</svg>

@@ -1,11 +1,11 @@
 import { defineConfig } from 'vitest/config';
 
 // Separate from vite.config.ts (which roots the web app at src/web) so tests
-// run from the project root and pick up the server suites.
+// run from the project root and pick up the server + extension suites.
 export default defineConfig({
   test: {
     root: '.',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'extension/**/*.test.ts'],
     environment: 'node',
   },
 });

@@ -7,6 +7,12 @@
 export async function copyToClipboard(text: string): Promise<boolean> {
   if (!text) return false;
 
+  // Inside the VS Code webview the extension host writes the clipboard
+  // (webview clipboard access is restricted), so report success here.
+  if (typeof (globalThis as { acquireVsCodeApi?: unknown }).acquireVsCodeApi === 'function') {
+    return true;
+  }
+
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);

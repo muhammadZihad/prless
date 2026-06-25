@@ -105,6 +105,8 @@ body {
 .topbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap; /* narrow viewports (e.g. VS Code webview): flow to a 2nd row instead of overflowing */
+  row-gap: 10px;
   gap: 14px;
   padding: 12px 20px;
   border-bottom: 1px solid var(--border);
@@ -331,6 +333,8 @@ button.primary {
   background: var(--accent);
   color: var(--accent-fg);
   border-color: transparent;
+  white-space: nowrap; /* keep "Export for AI" on one line even when the bar is cramped */
+  flex-shrink: 0;
 }
 
 button.primary:hover {
@@ -390,6 +394,12 @@ button:disabled {
   color: var(--text);
   cursor: pointer;
   transition: border-color 0.14s var(--ease), background 0.14s var(--ease);
+  /* Long branch names must not blow out the toolbar width; cap + ellipsis. */
+  max-width: 200px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .select:hover {
@@ -417,6 +427,8 @@ button:disabled {
 .ref-picker {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
   gap: 8px;
 }
 

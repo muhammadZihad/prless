@@ -1,0 +1,41 @@
+{
+  "name": "prless-vscode",
+  "displayName": "PRless",
+  "description": "PR-style local code review with agent-agnostic AI handoff",
+  "version": "0.1.0",
+  "publisher": "muhammad-zihad",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/muhammadZihad/prless" },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["SCM Providers", "Other"],
+  "keywords": ["code-review", "diff", "git", "pull-request", "ai", "claude", "codex", "cursor", "local-first"],
+  "galleryBanner": { "color": "#6d54e0", "theme": "dark" },
+  "icon": "icons/prless.png",
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      { "command": "prless.review", "title": "Review Changes", "category": "PRless", "icon": "icons/prless.svg" },
+      { "command": "prless.sendToAgent", "title": "Send Review to Agent Terminal", "category": "PRless" }
+    ],
+    "menus": {
+      "scm/title": [{ "command": "prless.review", "group": "navigation" }]
+    },
+    "configuration": {
+      "title": "PRless",
+      "properties": {
+        "prless.agentCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Command run in the integrated terminal by 'Send Review to Agent Terminal'. When empty, a default is derived (e.g. claude/codex). Example: claude \"address .prless/review.md\""
+        },
+        "prless.defaultDiffMode": {
+          "type": "string",
+          "enum": ["working", "staged", "compare"],
+          "default": "working",
+          "description": "Diff mode the review opens with."
+        }
+      }
+    }
+  }
+}
