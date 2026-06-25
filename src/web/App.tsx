@@ -13,6 +13,7 @@ import {
   type FileDiff,
 } from './diffUtils';
 import { useTheme } from './theme';
+import { useLiveReload } from './useLiveReload';
 import { copyToClipboard } from './clipboard';
 import {
   defaultBindings,
@@ -35,6 +36,19 @@ import { CodeThemeButton, ThemeToggle, ViewToggle } from './components/Controls'
 import { Toast, type ToastState } from './components/Toast';
 import { usePersistedState } from './settings';
 
+/**
+ * True when a comment composer is open — a diff <textarea> is focused or holds
+ * unsaved text. Used to defer a live reload so we don't discard in-progress text.
+ */
+function hasOpenComposer(): boolean {
+  const active = document.activeElement;
+  if (active && active.tagName === 'TEXTAREA') return true;
+  for (const ta of document.querySelectorAll('textarea')) {
+    if (ta.value.trim()) return true;
+  }
+  return false;
+}
+
 export function App() {
   const [repo, setRepo] = useState<{ repoRoot: string; name: string } | null>(null);
   const [ready, setReady] = useState(false);
@@ -50,6 +64,8 @@ export function App() {
   const [viewType, setViewType] = usePersistedState<'unified' | 'split'>('prless:view-type', 'split');
   const [hideGenerated, setHideGenerated] = usePersistedState('prless:hide-generated', false);
   const [singleFile, setSingleFile] = usePersistedState('prless:single-file', false);
+  const [liveReload, setLiveReload] = usePersistedState('prless:live-reload', true);
+  const [pendingChanges, setPendingChanges] = useState(false);
   const [sidebarWidth, setSidebarWidth] = usePersistedState('prless:sidebar-width', 290);
   const [resizing, setResizing] = useState(false);
   const [fileQuery, setFileQuery] = useState('');
@@ -156,6 +172,28 @@ export function App() {
   useEffect(() => {
     loadDiff();
   }, [loadDiff]);
+
+  // Re-fetch everything that depends on the working tree. Comments re-anchor to
+  // the new diff automatically via durable anchors.
+  const reload = useCallback(() => {
+    setPendingChanges(false);
+    void loadDiff();
+    api.getRefs().then(setRefs).catch(() => {});
+    api.getComments().then(setComments).catch(() => {});
+  }, [loadDiff]);
+
+  // Live reload: when the working tree changes, refresh — unless the user is
+  // mid-comment, in which case show a "changes on disk" pill instead of clobbering it.
+  const handleLiveChange = useCallback(() => {
+    if (hasOpenComposer()) setPendingChanges(true);
+    else reload();
+  }, [reload]);
+
+  useLiveReload({
+    enabled: !!repo && liveReload,
+    getToken: api.getChangeToken,
+    onChange: handleLiveChange,
+  });
 
   // On a reload, the diff loads async — so the browser can't honor a
   // `#file-<path>` hash at first paint. Once the diff has rendered, scroll the
@@ -453,6 +491,32 @@ export function App() {
           <ThemeToggle theme={appTheme} onToggle={toggleAppTheme} />
           <button className="icon" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
             ⌘
+          </button>
+          {pendingChanges ? (
+            <button className="refresh-pill" onClick={reload} title="The working tree changed on disk">
+              <span className="live-dot" aria-hidden />
+              Changes on disk
+            </button>
+          ) : (
+            <button className="icon" onClick={reload} title="Refresh diff" aria-label="Refresh diff">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                <path d="M8 16H3v5" />
+              </svg>
+            </button>
+          )}
+          <button
+            className={`icon${liveReload ? ' active' : ''}`}
+            onClick={() => setLiveReload((v) => !v)}
+            title={liveReload ? 'Live reload on — auto-refresh on changes' : 'Live reload off'}
+            aria-label="Toggle live reload"
+            aria-pressed={liveReload}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
           </button>
           <div className="divider" />
           <button

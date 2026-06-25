@@ -4,6 +4,7 @@ import {
   ValidationError,
   createCommentOp,
   deleteCommentOp,
+  getChangeTokenOp,
   getDiffOp,
   getRefsOp,
   listCommentsOp,
@@ -52,6 +53,8 @@ async function dispatch(op: string, payload: any, deps: BridgeDeps): Promise<unk
       return getRefsOp(repo);
     case 'diff.get':
       return getDiffOp(repo, deps.paths, payload);
+    case 'changes.token':
+      return getChangeTokenOp(repo, deps.paths);
     case 'comments.list':
       return listCommentsOp(repo);
     case 'comments.create':
