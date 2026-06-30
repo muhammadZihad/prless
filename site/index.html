@@ -230,6 +230,18 @@
   .way .more { margin-top: 18px; display: inline-flex; align-items: center; gap: 7px; color: var(--iris); font-weight: 600; font-size: 14px; }
   .way .more:hover { gap: 11px; } .way .more { transition: gap .15s ease; }
 
+  /* ───── Contributors ───── */
+  .contrib-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; max-width: 820px; margin: 0 auto; }
+  .contrib { display: inline-flex; align-items: center; gap: 11px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 7px 18px 7px 7px; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }
+  .contrib:hover { border-color: color-mix(in srgb, var(--iris) 45%, var(--line)); transform: translateY(-2px); box-shadow: var(--shadow); }
+  .contrib img { width: 40px; height: 40px; border-radius: 50%; background: var(--inset); display: block; }
+  .contrib .meta { display: flex; flex-direction: column; line-height: 1.25; }
+  .contrib .meta b { font-size: 14.5px; letter-spacing: -.01em; }
+  .contrib .meta span { font-size: 12px; color: var(--faint); }
+  .contrib-cta { display: flex; justify-content: center; margin-top: 26px; }
+  .contrib-add { display: inline-flex; align-items: center; gap: 9px; border: 1px dashed color-mix(in srgb, var(--iris) 45%, var(--line)); color: var(--iris); border-radius: 999px; padding: 10px 20px; font-weight: 600; font-size: 14px; transition: background .15s ease, gap .15s ease; }
+  .contrib-add:hover { background: var(--grad-soft); gap: 13px; }
+
   /* ───── CTA + footer ───── */
   .cta-band { margin: 0 auto; max-width: var(--maxw); }
   .cta-card { position: relative; overflow: hidden; border-radius: 22px; padding: 60px 40px; text-align: center; border: 1px solid color-mix(in srgb, var(--iris) 30%, var(--line)); background: var(--grad-soft); }
@@ -471,6 +483,35 @@
     </div>
   </section>
 
+  <!-- CONTRIBUTORS -->
+  <section id="contributors" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="kicker">Community</span>
+        <h2>Built by these people</h2>
+        <p>PRless is open source and MIT-licensed. These are the folks who've shipped it — pulled live from GitHub.</p>
+      </div>
+      <div class="reveal">
+        <div class="contrib-grid" id="contrib-grid">
+          <a class="contrib" href="https://github.com/muhammadZihad" target="_blank" rel="noopener">
+            <img src="https://avatars.githubusercontent.com/u/48516246?v=4&s=80" width="40" height="40" alt="muhammadZihad" loading="lazy" referrerpolicy="no-referrer" />
+            <span class="meta"><b>@muhammadZihad</b><span>89 commits</span></span>
+          </a>
+          <a class="contrib" href="https://github.com/amims71" target="_blank" rel="noopener">
+            <img src="https://avatars.githubusercontent.com/u/23295804?v=4&s=80" width="40" height="40" alt="amims71" loading="lazy" referrerpolicy="no-referrer" />
+            <span class="meta"><b>@amims71</b><span>19 commits</span></span>
+          </a>
+        </div>
+        <div class="contrib-cta">
+          <a class="contrib-add" href="https://github.com/muhammadZihad/prless/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Become a contributor
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- CTA -->
   <section style="padding-top:0">
     <div class="wrap cta-band reveal">
@@ -563,6 +604,30 @@
     entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
   }, { threshold: 0.12 });
   document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+
+  // Contributors: best-effort live refresh from the GitHub API. The page ships
+  // a baked list (always renders); if the API responds we replace it with the
+  // current set. On any failure (offline / rate limit) the baked list stays.
+  (function () {
+    var grid = document.getElementById('contrib-grid');
+    if (!grid || !window.fetch) return;
+    fetch('https://api.github.com/repos/muhammadZihad/prless/contributors?per_page=100', {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+      .then(function (r) { if (!r.ok) throw new Error('rate-limited'); return r.json(); })
+      .then(function (list) {
+        if (!Array.isArray(list)) return;
+        var people = list.filter(function (c) { return c && c.type !== 'Bot' && !/\[bot\]$/i.test(c.login || ''); });
+        if (!people.length) return;
+        grid.innerHTML = people.map(function (c) {
+          var n = c.contributions;
+          return '<a class="contrib" href="' + c.html_url + '" target="_blank" rel="noopener">' +
+            '<img src="' + c.avatar_url + '&s=80" width="40" height="40" alt="' + c.login + '" loading="lazy" referrerpolicy="no-referrer">' +
+            '<span class="meta"><b>@' + c.login + '</b><span>' + n + ' commit' + (n === 1 ? '' : 's') + '</span></span></a>';
+        }).join('');
+      })
+      .catch(function () { /* keep the baked list */ });
+  })();
 
   document.getElementById('year').textContent = new Date().getFullYear();
 </script>
