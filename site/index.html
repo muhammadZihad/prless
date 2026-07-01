@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PRless — PR-style code review without the pull request</title>
+<meta name="description" content="Review a local git diff in your browser or VS Code, comment inline like a GitHub PR, and hand the notes to an AI agent. Local-first, agent-agnostic, no API keys." />
+<meta property="og:title" content="PRless — PR-style code review without the pull request" />
+<meta property="og:description" content="Review a local git diff, comment inline, and hand the notes to an AI agent. Local-first, agent-agnostic, no API keys." />
+<meta property="og:type" content="website" />
+<meta name="theme-color" content="#6d54e0" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236d54e0'/%3E%3Cstop offset='1' stop-color='%23ad5cd6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round' transform='translate(8 8) scale(2)'%3E%3Ccircle cx='18' cy='18' r='3'/%3E%3Ccircle cx='6' cy='6' r='3'/%3E%3Cpath d='M6 21V9a9 9 0 0 0 9 9'/%3E%3C/g%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #131219;
+    --bg-grad-1: #1a1727;
+    --bg-grad-2: #121118;
+    --panel: #1b1a23;
+    --panel-2: #21202b;
+    --inset: #16151d;
+    --line: #2b2937;
+    --line-soft: #232231;
+    --text: #ecebf4;
+    --muted: #a8a4bb;
+    --faint: #726e85;
+    --iris: #927bf2;
+    --iris-2: #c08be6;
+    --grad: linear-gradient(135deg, #7d63e6 0%, #ad5cd6 100%);
+    --grad-soft: linear-gradient(135deg, rgba(125,99,230,.16), rgba(173,92,214,.16));
+    --add: #56d364;
+    --add-bg: rgba(63, 185, 80, .14);
+    --del: #f0726a;
+    --del-bg: rgba(248, 81, 73, .12);
+    --radius: 14px;
+    --radius-sm: 9px;
+    --shadow: 0 24px 70px -28px rgba(10, 8, 24, .8);
+    --shadow-iris: 0 18px 50px -20px rgba(125, 99, 230, .55);
+    --maxw: 1120px;
+    --ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  [data-theme="light"] {
+    --bg: #fafaff;
+    --bg-grad-1: #f2eefb;
+    --bg-grad-2: #fbfaff;
+    --panel: #ffffff;
+    --panel-2: #f6f5fb;
+    --inset: #f4f3f9;
+    --line: #e6e3f0;
+    --line-soft: #eeecf5;
+    --text: #211f2b;
+    --muted: #5d586f;
+    --faint: #918da3;
+    --iris: #6d54e0;
+    --iris-2: #9a5fd0;
+    --add: #1a7f37;
+    --add-bg: rgba(63, 185, 80, .13);
+    --del: #cf222e;
+    --del-bg: rgba(248, 81, 73, .10);
+    --shadow: 0 24px 60px -30px rgba(80, 60, 160, .35);
+    --shadow-iris: 0 18px 44px -20px rgba(109, 84, 224, .4);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    font-family: var(--ui);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text);
+    background:
+      radial-gradient(1200px 600px at 78% -8%, var(--bg-grad-1), transparent 60%),
+      radial-gradient(900px 500px at 8% 0%, var(--bg-grad-2), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  a { color: inherit; text-decoration: none; }
+  h1, h2, h3 { line-height: 1.12; letter-spacing: -0.022em; margin: 0; font-weight: 680; }
+  p { margin: 0; }
+  .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  .grad-text {
+    background: var(--grad); -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  .mono { font-family: var(--mono); }
+
+  /* ───── Nav ───── */
+  header.nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: saturate(1.4) blur(12px);
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    border-bottom: 1px solid transparent;
+    transition: border-color .25s ease, background .25s ease;
+  }
+  header.nav.scrolled { border-bottom-color: var(--line); }
+  .nav-inner { display: flex; align-items: center; gap: 18px; height: 64px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 680; letter-spacing: -.02em; font-size: 17px; }
+  .logo .mark { width: 30px; height: 30px; border-radius: 9px; box-shadow: var(--shadow-iris); }
+  .nav-links { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .nav-links a.navlink {
+    color: var(--muted); padding: 8px 12px; border-radius: 8px; font-size: 14.5px; font-weight: 550;
+    transition: color .15s ease, background .15s ease;
+  }
+  .nav-links a.navlink:hover { color: var(--text); background: var(--panel-2); }
+  .icon-btn {
+    display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer;
+    transition: color .15s ease, border-color .15s ease, transform .1s ease;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--iris); }
+  .icon-btn:active { transform: translateY(1px); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; font-family: var(--ui); font-weight: 600;
+    font-size: 14.5px; padding: 10px 18px; border-radius: 10px; cursor: pointer; border: 1px solid transparent;
+    transition: transform .12s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .15s ease;
+    white-space: nowrap;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--grad); color: #fff; box-shadow: var(--shadow-iris); }
+  .btn-primary:hover { box-shadow: 0 22px 60px -18px rgba(125,99,230,.7); transform: translateY(-1px); }
+  .btn-ghost { background: var(--panel); color: var(--text); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--iris); color: var(--text); }
+
+  /* ───── Hero ───── */
+  .hero { padding: 74px 0 36px; }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+    color: var(--iris); padding: 6px 13px; border-radius: 999px;
+    background: var(--grad-soft); border: 1px solid color-mix(in srgb, var(--iris) 30%, transparent);
+    margin-bottom: 22px; letter-spacing: .01em;
+  }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--iris); box-shadow: 0 0 0 4px color-mix(in srgb, var(--iris) 25%, transparent); }
+  .hero h1 { font-size: clamp(34px, 5vw, 54px); font-weight: 720; }
+  .hero p.lead { margin-top: 20px; font-size: clamp(16px, 1.6vw, 19px); color: var(--muted); max-width: 33ch; }
+  .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 30px; }
+  .cmd {
+    display: inline-flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 14px;
+    background: var(--inset); border: 1px solid var(--line); border-radius: 11px; padding: 11px 12px 11px 16px;
+    color: var(--text);
+  }
+  .cmd .prompt { color: var(--iris); user-select: none; }
+  .cmd .copy {
+    display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; border: none;
+    background: var(--panel-2); color: var(--muted); cursor: pointer; transition: color .15s, background .15s;
+  }
+  .cmd .copy:hover { color: var(--text); background: var(--line); }
+  .cmd .copy.done { color: var(--add); }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 18px 26px; margin-top: 30px; color: var(--faint); font-size: 13.5px; }
+  .hero-meta span { display: inline-flex; align-items: center; gap: 7px; }
+  .hero-meta svg { color: var(--iris); }
+
+  /* ───── Diff mock window ───── */
+  .window {
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+    box-shadow: var(--shadow); overflow: hidden; transform: rotate(.6deg);
+    transition: transform .4s var(--ease, cubic-bezier(.22,1,.36,1));
+  }
+  .window:hover { transform: rotate(0deg); }
+  .win-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); background: var(--panel-2); }
+  .dots { display: flex; gap: 6px; }
+  .dots i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .dots i:nth-child(1){ background:#ff5f57; } .dots i:nth-child(2){ background:#febc2e; } .dots i:nth-child(3){ background:#28c840; }
+  .win-file { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .win-pill { margin-left: auto; font-size: 11.5px; font-weight: 600; color: var(--iris); background: var(--grad-soft); border: 1px solid color-mix(in srgb, var(--iris) 28%, transparent); padding: 3px 10px; border-radius: 999px; }
+  .diff { font-family: var(--mono); font-size: 13px; line-height: 1.7; padding: 6px 0; }
+  .row { display: grid; grid-template-columns: 44px 1fr; align-items: stretch; }
+  .row .ln { text-align: right; padding: 0 12px; color: var(--faint); user-select: none; border-right: 1px solid var(--line-soft); }
+  .row code { padding: 0 14px; white-space: pre; overflow: hidden; }
+  .row.add { background: var(--add-bg); } .row.add .ln { color: var(--add); }
+  .row.del { background: var(--del-bg); } .row.del .ln { color: var(--del); }
+  .row.add code::before { content: "+"; color: var(--add); margin-right: 6px; }
+  .row.del code::before { content: "−"; color: var(--del); margin-right: 6px; }
+  .row.ctx code::before { content: " "; margin-right: 6px; }
+  .tok-k { color: var(--iris-2); } .tok-f { color: #6cb6ff; } .tok-s { color: var(--add); } .tok-c { color: var(--faint); font-style: italic; }
+
+  .thread { margin: 8px 14px 6px 44px; border: 1px solid var(--line); border-left: 3px solid var(--iris); border-radius: 0 10px 10px 10px; background: var(--inset); padding: 12px 14px; }
+  .thread-head { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+  .avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--grad); display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; }
+  .thread-head b { font-size: 13px; } .thread-head .when { color: var(--faint); font-size: 12px; margin-left: auto; }
+  .thread p { font-size: 13.5px; color: var(--text); }
+  .win-foot { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-top: 1px solid var(--line-soft); background: var(--panel-2); }
+  .export-pill { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 650; color: #fff; background: var(--grad); padding: 8px 14px; border-radius: 9px; box-shadow: var(--shadow-iris); }
+  .export-pill .count { background: rgba(255,255,255,.25); border-radius: 999px; min-width: 20px; height: 20px; display: inline-grid; place-items: center; font-size: 11.5px; padding: 0 5px; }
+  .win-foot .hint { font-family: var(--mono); font-size: 12px; color: var(--faint); margin-left: auto; }
+
+  /* ───── Trust strip ───── */
+  .strip { border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); margin-top: 30px; }
+  .strip-inner { display: flex; flex-wrap: wrap; gap: 14px 34px; padding: 20px 0; color: var(--faint); font-size: 13.5px; font-weight: 550; align-items: center; justify-content: center; }
+  .strip-inner b { color: var(--muted); font-weight: 650; }
+  .strip-inner .sep { width: 4px; height: 4px; border-radius: 50%; background: var(--line); }
+
+  /* ───── Sections ───── */
+  section { padding: 84px 0; }
+  .sec-head { max-width: 640px; margin: 0 auto 52px; text-align: center; }
+  .sec-head .kicker { color: var(--iris); font-weight: 650; font-size: 13.5px; letter-spacing: .08em; text-transform: uppercase; }
+  .sec-head h2 { font-size: clamp(27px, 3.4vw, 38px); margin-top: 12px; }
+  .sec-head p { color: var(--muted); margin-top: 14px; font-size: 17px; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }
+  .card:hover { border-color: color-mix(in srgb, var(--iris) 45%, var(--line)); transform: translateY(-3px); box-shadow: var(--shadow); }
+  .card .ico { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--grad-soft); color: var(--iris); border: 1px solid color-mix(in srgb, var(--iris) 25%, transparent); margin-bottom: 16px; }
+  .card h3 { font-size: 17.5px; }
+  .card p { color: var(--muted); margin-top: 8px; font-size: 14.5px; }
+
+  /* ───── How it works ───── */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .step { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px 22px; }
+  .step .num { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--iris); background: var(--grad-soft); width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; margin-bottom: 14px; }
+  .step h3 { font-size: 16px; } .step p { color: var(--muted); margin-top: 7px; font-size: 14px; }
+  .step .arrow { position: absolute; right: -11px; top: 50%; transform: translateY(-50%); color: var(--line); z-index: 2; }
+  @media (max-width: 860px) { .step .arrow { display: none; } }
+
+  /* ───── Two ways ───── */
+  .ways { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .way { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; }
+  .way h3 { font-size: 20px; display: flex; align-items: center; gap: 10px; }
+  .way .tag { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--iris); background: var(--grad-soft); border-radius: 999px; padding: 3px 9px; }
+  .way p { color: var(--muted); margin-top: 10px; font-size: 14.5px; }
+  .code-block { margin-top: 18px; background: var(--inset); border: 1px solid var(--line); border-radius: 11px; padding: 14px 16px; color: var(--text); position: relative; overflow-x: auto; }
+  .code-block pre { margin: 0; white-space: pre; font-family: var(--mono); font-size: 13px; line-height: 1.85; }
+  .code-block .c { color: var(--faint); } .code-block .p { color: var(--iris); }
+  .code-block .copy { position: absolute; top: 10px; right: 10px; }
+  .way .more { margin-top: 18px; display: inline-flex; align-items: center; gap: 7px; color: var(--iris); font-weight: 600; font-size: 14px; }
+  .way .more:hover { gap: 11px; } .way .more { transition: gap .15s ease; }
+
+  /* ───── Contributors ───── */
+  .contrib-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; max-width: 820px; margin: 0 auto; }
+  .contrib { display: inline-flex; align-items: center; gap: 11px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 7px 18px 7px 7px; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }
+  .contrib:hover { border-color: color-mix(in srgb, var(--iris) 45%, var(--line)); transform: translateY(-2px); box-shadow: var(--shadow); }
+  .contrib img { width: 40px; height: 40px; border-radius: 50%; background: var(--inset); display: block; }
+  .contrib .meta { display: flex; flex-direction: column; line-height: 1.25; }
+  .contrib .meta b { font-size: 14.5px; letter-spacing: -.01em; }
+  .contrib .meta span { font-size: 12px; color: var(--faint); }
+  .contrib-cta { display: flex; justify-content: center; margin-top: 26px; }
+  .contrib-add { display: inline-flex; align-items: center; gap: 9px; border: 1px dashed color-mix(in srgb, var(--iris) 45%, var(--line)); color: var(--iris); border-radius: 999px; padding: 10px 20px; font-weight: 600; font-size: 14px; transition: background .15s ease, gap .15s ease; }
+  .contrib-add:hover { background: var(--grad-soft); gap: 13px; }
+
+  /* ───── CTA + footer ───── */
+  .cta-band { margin: 0 auto; max-width: var(--maxw); }
+  .cta-card { position: relative; overflow: hidden; border-radius: 22px; padding: 60px 40px; text-align: center; border: 1px solid color-mix(in srgb, var(--iris) 30%, var(--line)); background: var(--grad-soft); }
+  .cta-card::after { content: ""; position: absolute; inset: 0; background: radial-gradient(600px 200px at 50% -40%, color-mix(in srgb, var(--iris) 32%, transparent), transparent 70%); pointer-events: none; }
+  .cta-card h2 { font-size: clamp(26px, 3.6vw, 40px); position: relative; }
+  .cta-card p { color: var(--muted); margin: 14px auto 28px; max-width: 50ch; position: relative; }
+  .cta-card .hero-cta { justify-content: center; position: relative; }
+  footer { border-top: 1px solid var(--line-soft); padding: 40px 0; margin-top: 90px; }
+  .foot-inner { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; color: var(--faint); font-size: 14px; }
+  .foot-links { display: flex; flex-wrap: wrap; gap: 22px; }
+  .foot-links a:hover { color: var(--text); }
+
+  /* ───── reveal ───── */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.22,1,.36,1); }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } .window { transform: none; } }
+
+  /* ───── responsive ───── */
+  @media (max-width: 940px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 44px; }
+    .hero p.lead { max-width: 46ch; }
+    .features { grid-template-columns: 1fr 1fr; }
+    .steps { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 680px) {
+    .nav-links .navlink { display: none; }
+    .features, .steps, .ways { grid-template-columns: 1fr; }
+    .hero { padding: 48px 0 24px; }
+    section { padding: 60px 0; }
+    .cta-card { padding: 44px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap nav-inner">
+    <a class="logo" href="#top" aria-label="PRless home">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7d63e6"/><stop offset="1" stop-color="#ad5cd6"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#lg)"/><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 8) scale(2)"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></g></svg>
+      PRless
+    </a>
+    <nav class="nav-links">
+      <a class="navlink" href="#features">Features</a>
+      <a class="navlink" href="#how">How it works</a>
+      <a class="navlink" href="#install">Install</a>
+      <a class="navlink" href="https://github.com/muhammadZihad/prless" target="_blank" rel="noopener">GitHub</a>
+      <button class="icon-btn" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
+        <svg id="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <a class="btn btn-primary" href="#install">Get started</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="reveal">
+        <span class="eyebrow"><span class="dot"></span> Local-first · Agent-agnostic · No API keys</span>
+        <h1>PR-style code review,<br><span class="grad-text">without the pull request.</span></h1>
+        <p class="lead">Review a local git diff like a GitHub PR, leave inline comments, and hand the notes to your AI agent. The whole loop stays on your machine.</p>
+        <div class="hero-cta">
+          <div class="cmd">
+            <span class="prompt">$</span>
+            <span class="mono" id="install-cmd">npm install -g @muhammad_zihad/prless</span>
+            <button class="copy" data-copy="npm install -g @muhammad_zihad/prless" aria-label="Copy install command">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+          </div>
+          <a class="btn btn-ghost" href="#vscode">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3 21 6v12l-5 3-9-7 9-7Z"/><path d="m7 8-4 4 4 4"/></svg>
+            VS Code extension
+          </a>
+        </div>
+        <div class="hero-meta">
+          <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Works with Claude Code, Codex &amp; Cursor</span>
+          <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Binds to 127.0.0.1 — never leaves your machine</span>
+        </div>
+      </div>
+
+      <!-- diff review mock -->
+      <div class="reveal" style="transition-delay:.08s">
+        <div class="window" role="img" aria-label="A PRless diff review with an inline comment and an Export for AI button">
+          <div class="win-bar">
+            <span class="dots"><i></i><i></i><i></i></span>
+            <span class="win-file">src/auth/login.ts</span>
+            <span class="win-pill">Working tree vs HEAD</span>
+          </div>
+          <div class="diff">
+            <div class="row ctx"><span class="ln">40</span><code><span class="tok-k">export async function</span> <span class="tok-f">login</span>(creds) {</code></div>
+            <div class="row del"><span class="ln">41</span><code>  <span class="tok-k">if</span> (creds) {</code></div>
+            <div class="row del"><span class="ln">42</span><code>    <span class="tok-k">return await</span> verify(creds)</code></div>
+            <div class="row del"><span class="ln">43</span><code>  }</code></div>
+          </div>
+          <div class="thread">
+            <div class="thread-head"><span class="avatar">YOU</span><b>Inline comment</b><span class="when">just now</span></div>
+            <p>Use an early return instead of nesting — and drop the redundant <code class="mono">await</code> on the returned promise.</p>
+          </div>
+          <div class="diff">
+            <div class="row add"><span class="ln">41</span><code>  <span class="tok-k">if</span> (!creds) <span class="tok-k">return</span> <span class="tok-k">null</span>;</code></div>
+            <div class="row add"><span class="ln">42</span><code>  <span class="tok-k">return</span> verify(creds);</code></div>
+            <div class="row ctx"><span class="ln">43</span><code>}</code></div>
+          </div>
+          <div class="win-foot">
+            <span class="export-pill">Export for AI <span class="count">3</span></span>
+            <span class="hint">→ .prless/review.md</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- trust strip -->
+    <div class="strip">
+      <div class="wrap strip-inner">
+        <span>📦 <b>npm</b> @muhammad_zihad/prless</span><span class="sep"></span>
+        <span><b>Node 18+</b></span><span class="sep"></span>
+        <span><b>MIT</b> licensed</span><span class="sep"></span>
+        <span><b>100%</b> local</span><span class="sep"></span>
+        <span>macOS · Linux · Windows</span><span class="sep"></span>
+        <span>No accounts · <b>no API keys</b></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="kicker">Why PRless</span>
+        <h2>Give AI review what human review already has</h2>
+        <p>Comments pinned to exact lines — not prose you type into a chat box and hope the agent maps back to your code.</p>
+      </div>
+      <div class="features">
+        <div class="card reveal">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v18M3 9h18M3 15h18"/></svg></div>
+          <h3>GitHub-style diff view</h3>
+          <p>Working tree, staged, or branch compare — split or unified, with full syntax highlighting.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <h3>Inline · range · file comments</h3>
+          <p>Click a gutter, drag across line numbers, or comment on a whole file. Resolve, reopen, delete.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <h3>Durable, drift-aware</h3>
+          <p>Comments are anchored with surrounding context, so they survive as the agent rewrites your code — and flag when it drifts.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/><path d="M2 12h2"/></svg></div>
+          <h3>One-click AI handoff</h3>
+          <p>Copies an agent-ready prompt to your clipboard and writes <span class="mono">.prless/review.md</span>. Export everything, or just the comments you tick.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+          <h3>Built for big diffs</h3>
+          <p>File search, single-file view, “commented only” &amp; “hide generated” filters, <span class="mono">.prlessignore</span>, and path scoping.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M7 13h10"/></svg></div>
+          <h3>Keyboard-driven &amp; themed</h3>
+          <p>Shortcuts for everything (rebindable), 12+ syntax themes, light &amp; dark — preferences persist.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="kicker">The loop</span>
+        <h2>From diff to applied fix — on your machine</h2>
+        <p>No remote, no PR, no MCP. The handoff is a plain file plus a clipboard copy, so it works with any agent.</p>
+      </div>
+      <div class="steps">
+        <div class="step reveal">
+          <div class="num">1</div>
+          <h3>Open a diff</h3>
+          <p><span class="mono">prless open .</span> (or the VS Code command) renders your uncommitted changes.</p>
+          <svg class="arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+        <div class="step reveal" style="transition-delay:.05s">
+          <div class="num">2</div>
+          <h3>Comment inline</h3>
+          <p>Pin notes to exact lines, just like reviewing a GitHub pull request.</p>
+          <svg class="arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+        <div class="step reveal" style="transition-delay:.1s">
+          <div class="num">3</div>
+          <h3>Export for AI</h3>
+          <p>Open comments are grouped by file into <span class="mono">.prless/review.md</span> and copied to your clipboard.</p>
+          <svg class="arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+        <div class="step reveal" style="transition-delay:.15s">
+          <div class="num">4</div>
+          <h3>Agent applies it</h3>
+          <p>Paste into Claude Code, Codex, or Cursor. Each comment becomes a change. Then re-review.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TWO WAYS -->
+  <section id="install" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="kicker">Two ways to run it</span>
+        <h2>In your browser, or right in your editor</h2>
+        <p>Same review engine, same <span class="mono">.prless/</span> handoff — pick whichever fits your flow.</p>
+      </div>
+      <div class="ways">
+        <div class="way reveal">
+          <h3><span class="tag">CLI</span> Browser review</h3>
+          <p>A tiny local server opens your diff in the browser. Zero config.</p>
+          <div class="code-block">
+            <button class="copy icon-btn" data-copy="npm install -g @muhammad_zihad/prless&#10;cd your-project&#10;prless open ." aria-label="Copy commands"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><pre><span class="c"># install once</span>
+<span class="p">$</span> npm install -g @muhammad_zihad/prless
+
+<span class="c"># review the current repo</span>
+<span class="p">$</span> cd your-project
+<span class="p">$</span> prless open .</pre>
+          </div>
+          <a class="more" href="https://www.npmjs.com/package/@muhammad_zihad/prless" target="_blank" rel="noopener">View on npm →</a>
+        </div>
+        <div class="way reveal" id="vscode" style="transition-delay:.06s">
+          <h3><span class="tag">VS Code</span> In-editor review</h3>
+          <p>Click the PRless icon in the Source Control title bar to open the diff in an editor tab — comment and export without leaving VS Code.</p>
+          <div class="code-block"><pre><span class="c"># or run from the Command Palette</span>
+<span class="p">›</span> PRless: Review Changes
+
+<span class="c"># hand off to your agent's terminal</span>
+<span class="p">›</span> PRless: Send Review to Agent Terminal</pre>
+          </div>
+          <a class="more" href="https://github.com/muhammadZihad/prless/tree/main/extension" target="_blank" rel="noopener">Get the extension →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTRIBUTORS -->
+  <section id="contributors" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="kicker">Community</span>
+        <h2>Built by these people</h2>
+        <p>PRless is open source and MIT-licensed. These are the folks who've shipped it — pulled live from GitHub.</p>
+      </div>
+      <div class="reveal">
+        <div class="contrib-grid" id="contrib-grid">
+          <a class="contrib" href="https://github.com/muhammadZihad" target="_blank" rel="noopener">
+            <img src="https://avatars.githubusercontent.com/u/48516246?v=4&s=80" width="40" height="40" alt="muhammadZihad" loading="lazy" referrerpolicy="no-referrer" />
+            <span class="meta"><b>@muhammadZihad</b><span>89 commits</span></span>
+          </a>
+          <a class="contrib" href="https://github.com/amims71" target="_blank" rel="noopener">
+            <img src="https://avatars.githubusercontent.com/u/23295804?v=4&s=80" width="40" height="40" alt="amims71" loading="lazy" referrerpolicy="no-referrer" />
+            <span class="meta"><b>@amims71</b><span>19 commits</span></span>
+          </a>
+        </div>
+        <div class="contrib-cta">
+          <a class="contrib-add" href="https://github.com/muhammadZihad/prless/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Become a contributor
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="padding-top:0">
+    <div class="wrap cta-band reveal">
+      <div class="cta-card">
+        <h2>Stop describing changes. Start pinning them.</h2>
+        <p>Give your AI agent line-anchored review comments — the way you'd review a teammate's PR.</p>
+        <div class="hero-cta">
+          <div class="cmd">
+            <span class="prompt">$</span>
+            <span class="mono">npm install -g @muhammad_zihad/prless</span>
+            <button class="copy" data-copy="npm install -g @muhammad_zihad/prless" aria-label="Copy install command"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+          <a class="btn btn-primary" href="https://github.com/muhammadZihad/prless" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+            Star on GitHub
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <span class="logo" style="font-size:15px">
+      <svg class="mark" style="width:24px;height:24px" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="url(#lg)"/><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 8) scale(2)"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></g></svg>
+      PRless
+    </span>
+    <nav class="foot-links">
+      <a href="https://github.com/muhammadZihad/prless" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://www.npmjs.com/package/@muhammad_zihad/prless" target="_blank" rel="noopener">npm</a>
+      <a href="https://github.com/muhammadZihad/prless/tree/main/extension" target="_blank" rel="noopener">VS Code extension</a>
+      <a href="https://github.com/muhammadZihad/prless/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    </nav>
+    <span>© <span id="year"></span> Muhammad AR Zihad</span>
+  </div>
+</footer>
+
+<script>
+  // Theme: respect saved choice, else system.
+  (function () {
+    var root = document.documentElement;
+    var saved = null;
+    try { saved = localStorage.getItem('prless-theme'); } catch (e) {}
+    if (saved) root.setAttribute('data-theme', saved);
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) root.setAttribute('data-theme', 'light');
+
+    var sun = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+    var moon = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>';
+    function paintIcon() {
+      var icon = document.getElementById('theme-icon');
+      if (icon) icon.innerHTML = root.getAttribute('data-theme') === 'light' ? moon : sun;
+    }
+    paintIcon();
+    var btn = document.getElementById('theme-toggle');
+    if (btn) btn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('prless-theme', next); } catch (e) {}
+      paintIcon();
+    });
+  })();
+
+  // Copy-to-clipboard buttons.
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var text = b.getAttribute('data-copy');
+      var done = function () {
+        b.classList.add('done');
+        var prev = b.innerHTML;
+        b.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>';
+        setTimeout(function () { b.classList.remove('done'); b.innerHTML = prev; }, 1400);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done).catch(done);
+      } else {
+        var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+        ta.select(); try { document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  // Sticky-nav border on scroll.
+  var nav = document.getElementById('nav');
+  var onScroll = function () { nav.classList.toggle('scrolled', window.scrollY > 8); };
+  onScroll(); window.addEventListener('scroll', onScroll, { passive: true });
+
+  // Reveal on scroll.
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+
+  // Contributors: best-effort live refresh from the GitHub API. The page ships
+  // a baked list (always renders); if the API responds we replace it with the
+  // current set. On any failure (offline / rate limit) the baked list stays.
+  (function () {
+    var grid = document.getElementById('contrib-grid');
+    if (!grid || !window.fetch) return;
+    fetch('https://api.github.com/repos/muhammadZihad/prless/contributors?per_page=100', {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+      .then(function (r) { if (!r.ok) throw new Error('rate-limited'); return r.json(); })
+      .then(function (list) {
+        if (!Array.isArray(list)) return;
+        var people = list.filter(function (c) { return c && c.type !== 'Bot' && !/\[bot\]$/i.test(c.login || ''); });
+        if (!people.length) return;
+        grid.innerHTML = people.map(function (c) {
+          var n = c.contributions;
+          return '<a class="contrib" href="' + c.html_url + '" target="_blank" rel="noopener">' +
+            '<img src="' + c.avatar_url + '&s=80" width="40" height="40" alt="' + c.login + '" loading="lazy" referrerpolicy="no-referrer">' +
+            '<span class="meta"><b>@' + c.login + '</b><span>' + n + ' commit' + (n === 1 ? '' : 's') + '</span></span></a>';
+        }).join('');
+      })
+      .catch(function () { /* keep the baked list */ });
+  })();
+
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
